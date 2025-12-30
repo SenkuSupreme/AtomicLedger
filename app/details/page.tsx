@@ -19,6 +19,12 @@ import {
   TrendingUp,
   Eye,
   ArrowLeft,
+  Activity,
+  Zap,
+  Cpu,
+  Shield,
+  Layers,
+  Brain
 } from "lucide-react";
 import { ITask } from "@/lib/models/Task";
 import { IHabit } from "@/lib/models/Habit";
@@ -26,6 +32,7 @@ import { IGoal } from "@/lib/models/Goal";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
+import { motion, AnimatePresence } from "framer-motion";
 
 type ItemType = "task" | "habit" | "goal";
 type ItemData = ITask | IHabit | IGoal;
@@ -45,23 +52,17 @@ export default function DetailsPage() {
     type: ItemType | null;
   }>({ isOpen: false, item: null, type: null });
 
-  // Habit completion state
   const [completionCount, setCompletionCount] = useState(1);
   const [completionNotes, setCompletionNotes] = useState("");
-  const [newMilestone, setNewMilestone] = useState("");
 
   useEffect(() => {
     const type = searchParams.get("type") as ItemType;
     const id = searchParams.get("id");
 
-    if (type) {
-      setActiveTab(type);
-    }
-
+    if (type) setActiveTab(type);
     fetchAllData();
 
     if (id && type) {
-      // Auto-select the item if ID is provided
       setTimeout(() => {
         selectItemById(id, type);
       }, 500);
@@ -78,15 +79,15 @@ export default function DetailsPage() {
 
       if (tasksRes.ok) {
         const tasksData = await tasksRes.json();
-        setTasks(tasksData);
+        setTasks(Array.isArray(tasksData) ? tasksData : []);
       }
       if (habitsRes.ok) {
         const habitsData = await habitsRes.json();
-        setHabits(habitsData);
+        setHabits(habitsData.habits || []);
       }
       if (goalsRes.ok) {
         const goalsData = await goalsRes.json();
-        setGoals(goalsData);
+        setGoals(goalsData.goals || []);
       }
     } catch (error) {
       toast.error("Error fetching data");
@@ -98,73 +99,45 @@ export default function DetailsPage() {
   const selectItemById = (id: string, type: ItemType) => {
     let item: ItemData | undefined;
     switch (type) {
-      case "task":
-        item = tasks.find((t) => t._id === id);
-        break;
-      case "habit":
-        item = habits.find((h) => h._id === id);
-        break;
-      case "goal":
-        item = goals.find((g) => g._id === id);
-        break;
+      case "task": item = tasks.find((t) => t._id === id); break;
+      case "habit": item = habits.find((h) => h._id === id); break;
+      case "goal": item = goals.find((g) => g._id === id); break;
     }
-    if (item) {
-      setSelectedItem(item);
-    }
+    if (item) setSelectedItem(item);
   };
 
   const handleDelete = async (item: ItemData, type: ItemType) => {
     try {
-      const response = await fetch(`/api/${type}s/${item._id}`, {
-        method: "DELETE",
-      });
-
+      const response = await fetch(`/api/${type}s/${item._id}`, { method: "DELETE" });
       if (response.ok) {
-        // Update local state
         switch (type) {
-          case "task":
-            setTasks(tasks.filter((t) => t._id !== item._id));
-            break;
-          case "habit":
-            setHabits(habits.filter((h) => h._id !== item._id));
-            break;
-          case "goal":
-            setGoals(goals.filter((g) => g._id !== item._id));
-            break;
+          case "task": setTasks(tasks.filter((t) => t._id !== item._id)); break;
+          case "habit": setHabits(habits.filter((h) => h._id !== item._id)); break;
+          case "goal": setGoals(goals.filter((g) => g._id !== item._id)); break;
         }
         setSelectedItem(null);
-        toast.success(
-          `${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully`
-        );
-      } else {
-        toast.error(`Failed to delete ${type}`);
+        toast.success("Purge complete");
       }
     } catch (error) {
-      toast.error(`Error deleting ${type}`);
+      toast.error("Purge failure");
     }
     setDeleteDialog({ isOpen: false, item: null, type: null });
   };
 
-  const handleTaskStatusChange = async (
-    taskId: string,
-    newStatus: "todo" | "in-progress" | "done"
-  ) => {
+  const handleTaskStatusChange = async (taskId: string, newStatus: string) => {
     try {
       const response = await fetch(`/api/tasks/${taskId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-
       if (response.ok) {
         const updatedTask = await response.json();
         setTasks(tasks.map((t) => (t._id === taskId ? updatedTask : t)));
         setSelectedItem(updatedTask);
-        toast.success("Task status updated");
+        toast.success("Status calibrated");
       }
-    } catch (error) {
-      toast.error("Error updating task");
-    }
+    } catch (error) {}
   };
 
   const handleHabitComplete = async (habitId: string) => {
@@ -172,582 +145,298 @@ export default function DetailsPage() {
       const response = await fetch(`/api/habits/${habitId}/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          count: completionCount,
-          notes: completionNotes,
-        }),
+        body: JSON.stringify({ count: completionCount, notes: completionNotes }),
       });
-
       if (response.ok) {
         const updatedHabit = await response.json();
         setHabits(habits.map((h) => (h._id === habitId ? updatedHabit : h)));
         setSelectedItem(updatedHabit);
         setCompletionCount(1);
         setCompletionNotes("");
-        toast.success("Habit completed!");
+        toast.success("Signal transmitted");
       }
-    } catch (error) {
-      toast.error("Error completing habit");
-    }
+    } catch (error) {}
   };
 
-  const handleGoalProgressUpdate = async (
-    goalId: string,
-    newProgress: number
-  ) => {
+  const handleGoalProgressUpdate = async (goalId: string, newProgress: number) => {
     try {
       const response = await fetch(`/api/goals/${goalId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          progress: Math.max(0, Math.min(100, newProgress)),
-        }),
+        body: JSON.stringify({ progress: Math.max(0, Math.min(100, newProgress)) }),
       });
-
       if (response.ok) {
         const updatedGoal = await response.json();
         setGoals(goals.map((g) => (g._id === goalId ? updatedGoal : g)));
         setSelectedItem(updatedGoal);
-        toast.success("Progress updated");
+        toast.success("Calibration updated");
       }
-    } catch (error) {
-      toast.error("Error updating progress");
-    }
+    } catch (error) {}
   };
 
   const getCurrentItems = () => {
     switch (activeTab) {
-      case "task":
-        return tasks;
-      case "habit":
-        return habits;
-      case "goal":
-        return goals;
-      default:
-        return [];
+      case "task": return tasks;
+      case "habit": return habits;
+      case "goal": return goals;
+      default: return [];
     }
-  };
-
-  const getItemTitle = (item: ItemData) => {
-    return item.title;
   };
 
   const getItemStatus = (item: ItemData, type: ItemType) => {
     switch (type) {
-      case "task":
-        return (item as ITask).status;
-      case "habit":
-        return (item as IHabit).isActive ? "active" : "inactive";
-      case "goal":
-        return (item as IGoal).status;
-      default:
-        return "";
-    }
-  };
-
-  const renderItemList = () => {
-    const items = getCurrentItems();
-
-    return (
-      <div className="space-y-2">
-        {items.map((item) => (
-          <div
-            key={item._id}
-            onClick={() => setSelectedItem(item)}
-            className={`p-4 rounded-lg border cursor-pointer transition-all hover:border-white/30 ${
-              selectedItem?._id === item._id
-                ? "bg-white/10 border-white/30"
-                : "bg-white/5 border-white/10"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium text-white">{getItemTitle(item)}</h4>
-              <span className="text-xs text-white/60 capitalize">
-                {getItemStatus(item, activeTab)}
-              </span>
-            </div>
-            {item.description && (
-              <p className="text-sm text-white/60 mt-1 truncate">
-                {item.description}
-              </p>
-            )}
-          </div>
-        ))}
-        {items.length === 0 && (
-          <div className="text-center py-8 text-white/40">
-            No {activeTab}s found
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderTaskDetails = (task: ITask) => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">{task.title}</h2>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() =>
-              setDeleteDialog({ isOpen: true, item: task, type: "task" })
-            }
-            className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      </div>
-
-      {task.description && <p className="text-white/70">{task.description}</p>}
-
-      <div className="flex gap-2">
-        <button
-          onClick={() => handleTaskStatusChange(task._id!, "todo")}
-          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-            task.status === "todo"
-              ? "bg-gray-500/20 text-gray-300"
-              : "bg-white/10 hover:bg-white/20 text-white/70"
-          }`}
-        >
-          To Do
-        </button>
-        <button
-          onClick={() => handleTaskStatusChange(task._id!, "in-progress")}
-          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-            task.status === "in-progress"
-              ? "bg-blue-500/20 text-blue-300"
-              : "bg-white/10 hover:bg-white/20 text-white/70"
-          }`}
-        >
-          In Progress
-        </button>
-        <button
-          onClick={() => handleTaskStatusChange(task._id!, "done")}
-          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-            task.status === "done"
-              ? "bg-green-500/20 text-green-300"
-              : "bg-white/10 hover:bg-white/20 text-white/70"
-          }`}
-        >
-          Done
-        </button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <span className="text-white/60">Priority:</span>
-          <span className="ml-2 text-white capitalize">{task.priority}</span>
-        </div>
-        {task.dueDate && (
-          <div>
-            <span className="text-white/60">Due Date:</span>
-            <span className="ml-2 text-white">
-              {new Date(task.dueDate).toLocaleDateString()}
-            </span>
-          </div>
-        )}
-        {task.assignee && (
-          <div>
-            <span className="text-white/60">Assignee:</span>
-            <span className="ml-2 text-white">{task.assignee}</span>
-          </div>
-        )}
-        <div>
-          <span className="text-white/60">Created:</span>
-          <span className="ml-2 text-white">
-            {new Date(task.createdAt).toLocaleDateString()}
-          </span>
-        </div>
-      </div>
-
-      {task.tags && task.tags.length > 0 && (
-        <div>
-          <h4 className="text-white/80 mb-2">Tags</h4>
-          <div className="flex flex-wrap gap-2">
-            {task.tags.map((tag, index) => (
-              <span
-                key={index}
-                className="bg-white/10 text-white/70 px-3 py-1 rounded-full text-sm"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderHabitDetails = (habit: IHabit) => {
-    const isCompletedToday = () => {
-      const today = new Date().toDateString();
-      return habit.completions.some(
-        (c) =>
-          new Date(c.date).toDateString() === today &&
-          c.count >= habit.targetCount
-      );
-    };
-
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-white">{habit.title}</h2>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() =>
-                setDeleteDialog({ isOpen: true, item: habit, type: "habit" })
-              }
-              className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
-        </div>
-
-        {habit.description && (
-          <p className="text-white/70">{habit.description}</p>
-        )}
-
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-orange-400">
-              <Flame size={20} />
-              <span className="text-2xl font-bold">{habit.streak}</span>
-            </div>
-            <p className="text-xs text-white/60">Current Streak</p>
-          </div>
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-green-400">
-              <TrendingUp size={20} />
-              <span className="text-2xl font-bold">{habit.longestStreak}</span>
-            </div>
-            <p className="text-xs text-white/60">Best Streak</p>
-          </div>
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-blue-400">
-              <Target size={20} />
-              <span className="text-2xl font-bold">{habit.targetCount}</span>
-            </div>
-            <p className="text-xs text-white/60">Daily Target</p>
-          </div>
-        </div>
-
-        {habit.isActive && !isCompletedToday() && (
-          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-            <h4 className="text-white mb-3">Complete Today</h4>
-            <div className="flex gap-3 items-end">
-              <div>
-                <label className="block text-sm text-white/60 mb-1">
-                  Count
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={completionCount}
-                  onChange={(e) => setCompletionCount(Number(e.target.value))}
-                  className="w-20 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:border-white/40 focus:outline-none"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm text-white/60 mb-1">
-                  Notes
-                </label>
-                <input
-                  type="text"
-                  value={completionNotes}
-                  onChange={(e) => setCompletionNotes(e.target.value)}
-                  placeholder="Optional notes..."
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-white/40 focus:border-white/40 focus:outline-none"
-                />
-              </div>
-              <button
-                onClick={() => handleHabitComplete(habit._id!)}
-                className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
-              >
-                Complete
-              </button>
-            </div>
-          </div>
-        )}
-
-        {isCompletedToday() && (
-          <div className="bg-green-500/20 border border-green-500/40 rounded-lg p-4 text-center">
-            <CheckCircle size={24} className="mx-auto text-green-400 mb-2" />
-            <p className="text-green-400 font-medium">
-              Completed for today! 🎉
-            </p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-white/60">Category:</span>
-            <span className="ml-2 text-white capitalize">{habit.category}</span>
-          </div>
-          <div>
-            <span className="text-white/60">Frequency:</span>
-            <span className="ml-2 text-white capitalize">
-              {habit.frequency}
-            </span>
-          </div>
-          <div>
-            <span className="text-white/60">Status:</span>
-            <span className="ml-2 text-white">
-              {habit.isActive ? "Active" : "Inactive"}
-            </span>
-          </div>
-          <div>
-            <span className="text-white/60">Total Completions:</span>
-            <span className="ml-2 text-white">{habit.completions.length}</span>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderGoalDetails = (goal: IGoal) => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">{goal.title}</h2>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() =>
-              setDeleteDialog({ isOpen: true, item: goal, type: "goal" })
-            }
-            className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      </div>
-
-      {goal.description && <p className="text-white/70">{goal.description}</p>}
-
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-white/80">Progress</span>
-          <span className="text-white">{goal.progress}%</span>
-        </div>
-        <div className="w-full bg-white/10 rounded-full h-3 mb-4">
-          <div
-            className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300"
-            style={{ width: `${goal.progress}%` }}
-          />
-        </div>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() =>
-              handleGoalProgressUpdate(goal._id!, goal.progress - 5)
-            }
-            className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-            disabled={goal.progress <= 0}
-          >
-            <Minus size={16} />
-          </button>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={goal.progress}
-            onChange={(e) =>
-              handleGoalProgressUpdate(goal._id!, Number(e.target.value))
-            }
-            className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer"
-          />
-          <button
-            onClick={() =>
-              handleGoalProgressUpdate(goal._id!, goal.progress + 5)
-            }
-            className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-            disabled={goal.progress >= 100}
-          >
-            <Plus size={16} />
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <span className="text-white/60">Category:</span>
-          <span className="ml-2 text-white capitalize">{goal.category}</span>
-        </div>
-        <div>
-          <span className="text-white/60">Priority:</span>
-          <span className="ml-2 text-white capitalize">{goal.priority}</span>
-        </div>
-        <div>
-          <span className="text-white/60">Status:</span>
-          <span className="ml-2 text-white capitalize">
-            {goal.status.replace("-", " ")}
-          </span>
-        </div>
-        {goal.targetDate && (
-          <div>
-            <span className="text-white/60">Target Date:</span>
-            <span className="ml-2 text-white">
-              {new Date(goal.targetDate).toLocaleDateString()}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {goal.milestones && goal.milestones.length > 0 && (
-        <div>
-          <h4 className="text-white/80 mb-3">Milestones</h4>
-          <div className="space-y-2">
-            {goal.milestones.map((milestone, index) => (
-              <div
-                key={index}
-                className="flex items-center gap-3 p-2 bg-white/5 rounded-lg"
-              >
-                {milestone.completed ? (
-                  <CheckCircle size={16} className="text-green-400" />
-                ) : (
-                  <Circle size={16} className="text-white/40" />
-                )}
-                <span
-                  className={`${
-                    milestone.completed
-                      ? "line-through text-white/60"
-                      : "text-white/80"
-                  }`}
-                >
-                  {milestone.title}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderDetails = () => {
-    if (!selectedItem) {
-      return (
-        <div className="flex items-center justify-center h-full text-white/40">
-          <div className="text-center">
-            <Eye size={48} className="mx-auto mb-4" />
-            <p>Select an item to view details</p>
-          </div>
-        </div>
-      );
-    }
-
-    switch (activeTab) {
-      case "task":
-        return renderTaskDetails(selectedItem as ITask);
-      case "habit":
-        return renderHabitDetails(selectedItem as IHabit);
-      case "goal":
-        return renderGoalDetails(selectedItem as IGoal);
-      default:
-        return null;
+      case "task": return (item as ITask).status;
+      case "habit": return (item as IHabit).isActive ? "active" : "inactive";
+      case "goal": return (item as IGoal).status;
+      default: return "";
     }
   };
 
   if (loading) {
     return (
-      <div className="flex h-[80vh] w-full items-center justify-center text-white/60 font-mono text-xs uppercase tracking-[0.3em] animate-pulse">
-        Loading Details...
+      <div className="flex h-[80vh] w-full items-center justify-center text-white/20 font-black text-xs uppercase tracking-[0.5em] animate-pulse">
+        Synchronizing Intelligence Mesh...
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 text-white">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/10 pb-6">
-        <div className="flex items-center gap-4">
+    <div className="space-y-12 text-white font-sans relative min-h-screen pb-20 overflow-hidden px-4 md:px-8">
+      {/* Institutional Background Mesh */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+        <div className="absolute top-0 right-0 w-[1000px] h-[1000px] bg-purple-500/[0.03] blur-[150px] -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-[1000px] h-[1000px] bg-blue-500/[0.03] blur-[150px] translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+      </div>
+
+      {/* Header Mesh */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-white/5 pb-10 relative z-10 gap-8">
+        <div className="flex items-center gap-6">
           <button
             onClick={() => router.back()}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            className="p-5 bg-white/[0.03] hover:bg-white text-white/40 hover:text-black rounded-2xl border border-white/10 transition-all duration-300"
           >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={24} />
           </button>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight mb-1">
-              Details Dashboard
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-full">
+                 <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(168,85,247,0.5)]" />
+                 <span className="text-[9px] font-black uppercase tracking-[0.3em] text-purple-400">Diag Node 04 Live</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1 bg-white/[0.03] border border-white/5 rounded-full text-white/20">
+                 <Brain size={10} className="text-purple-500/50" />
+                 <span className="text-[9px] font-black uppercase tracking-[0.3em]">Intelligence Dashboard</span>
+              </div>
+            </div>
+            <h1 className="text-5xl font-black tracking-tighter italic uppercase bg-gradient-to-br from-white to-white/40 bg-clip-text text-transparent leading-none">
+              Execution Analysis
             </h1>
-            <p className="text-white/70 text-sm font-medium">
-              Manage your tasks, habits, and goals in one place
+            <p className="text-white/30 text-sm font-medium italic max-w-xl leading-relaxed">
+              "Granular archival analysis of operational signals. Performing deep execution diagnostics on the institutional ledger node."
             </p>
           </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-white/5 p-1 rounded-xl">
-        <button
-          onClick={() => setActiveTab("task")}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
-            activeTab === "task"
-              ? "bg-white text-black"
-              : "text-white/70 hover:text-white hover:bg-white/10"
-          }`}
-        >
-          <CheckSquare size={18} />
-          Tasks ({tasks.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("habit")}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
-            activeTab === "habit"
-              ? "bg-white text-black"
-              : "text-white/70 hover:text-white hover:bg-white/10"
-          }`}
-        >
-          <Flame size={18} />
-          Habits ({habits.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("goal")}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
-            activeTab === "goal"
-              ? "bg-white text-black"
-              : "text-white/70 hover:text-white hover:bg-white/10"
-          }`}
-        >
-          <Target size={18} />
-          Goals ({goals.length})
-        </button>
+      {/* Institutional Tab Mesh */}
+      <div className="flex gap-2 bg-white/[0.02] p-2 rounded-[2.5rem] border border-white/5 relative z-10 lg:max-w-xl">
+        {[
+          { id: "task", icon: <CheckSquare size={16} />, label: "Tasks", count: tasks.length },
+          { id: "habit", icon: <Flame size={16} />, label: "Habits", count: habits.length },
+          { id: "goal", icon: <Target size={16} />, label: "Goals", count: goals.length },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as ItemType)}
+            className={`flex-1 flex items-center justify-center gap-3 px-6 py-4 rounded-[1.8rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-500 ${
+              activeTab === tab.id
+                ? "bg-white text-black shadow-2xl shadow-white/10"
+                : "text-white/40 hover:text-white hover:bg-white/5"
+            }`}
+          >
+            {tab.icon}
+            {tab.label} ({tab.count})
+          </button>
+        ))}
       </div>
 
-      {/* Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* List */}
-        <div className="lg:col-span-1">
-          <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6">
-            <h3 className="text-lg font-bold text-white mb-4 capitalize">
-              {activeTab}s
+      {/* Content Mesh */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 relative z-10">
+        {/* Intelligence Ledger (List) */}
+        <div className="lg:col-span-4 space-y-6">
+          <div className="flex items-center justify-between px-6 py-2">
+            <h3 className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] italic">
+              {activeTab} Mesh
             </h3>
-            <div className="max-h-96 overflow-y-auto">{renderItemList()}</div>
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+              <span className="text-[8px] font-black text-purple-500/40 uppercase tracking-widest italic">Live Sync</span>
+            </div>
+          </div>
+          <div className="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar space-y-4">
+            {getCurrentItems().map((item) => (
+              <div
+                key={item._id}
+                onClick={() => setSelectedItem(item)}
+                className={`group relative p-8 rounded-[2.5rem] border transition-all duration-500 cursor-pointer overflow-hidden ${
+                  selectedItem?._id === item._id
+                    ? "bg-white/[0.08] border-white/20 shadow-3xl translate-x-1"
+                    : "bg-white/[0.02] border-white/5 hover:border-white/10 hover:bg-white/[0.04]"
+                }`}
+              >
+                 <div className="flex items-center justify-between mb-4 relative z-10">
+                    <h4 className={`text-sm font-black tracking-tight uppercase italic transition-colors ${
+                      selectedItem?._id === item._id ? "text-white" : "text-white/40 group-hover:text-white/60"
+                    }`}>
+                      {item.title}
+                    </h4>
+                    <div className={`px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest ${
+                      getItemStatus(item, activeTab) === 'done' || getItemStatus(item, activeTab) === 'completed'
+                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                        : "bg-white/5 text-white/30 border-white/5"
+                    }`}>
+                      {getItemStatus(item, activeTab)}
+                    </div>
+                 </div>
+                 {item.description && (
+                   <p className="text-[11px] text-white/20 font-medium italic line-clamp-2 relative z-10 group-hover:text-white/40 transition-colors">
+                     "{item.description}"
+                   </p>
+                 )}
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Details */}
-        <div className="lg:col-span-2">
-          <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6 min-h-96">
-            {renderDetails()}
-          </div>
+        {/* Intelligence Detail (Focus) */}
+        <div className="lg:col-span-8">
+           <div className="bg-[#0A0A0A]/40 backdrop-blur-xl border border-white/5 rounded-[4rem] p-12 min-h-[60vh] hover:bg-[#0A0A0A]/60 transition-all duration-1000 shadow-3xl flex flex-col relative overflow-hidden">
+             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.01] pointer-events-none" />
+             <AnimatePresence mode="wait">
+               {selectedItem ? (
+                 <motion.div
+                   key={selectedItem._id}
+                   initial={{ opacity: 0, y: 20 }}
+                   animate={{ opacity: 1, y: 0 }}
+                   exit={{ opacity: 0, y: -20 }}
+                   className="relative z-10 h-full flex flex-col"
+                 >
+                    {activeTab === 'habit' ? (
+                      <div className="space-y-12">
+                         <div className="flex items-start justify-between">
+                           <div className="space-y-4">
+                             <div className="flex items-center gap-4">
+                               <span className="px-4 py-1.5 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-full text-[9px] font-black uppercase tracking-widest italic">
+                                 {(selectedItem as IHabit).category} protocol
+                               </span>
+                               <span className="text-[9px] font-black uppercase tracking-widest text-white/20 italic">
+                                 {(selectedItem as IHabit).frequency} sync
+                               </span>
+                             </div>
+                             <h2 className="text-5xl font-black text-white italic uppercase tracking-tighter leading-none">
+                               {selectedItem.title}
+                             </h2>
+                             {selectedItem.description && (
+                               <p className="text-white/30 font-medium italic text-sm">"{selectedItem.description}"</p>
+                             )}
+                           </div>
+                           <button
+                             onClick={() => setDeleteDialog({ isOpen: true, item: selectedItem, type: "habit" })}
+                             className="p-5 bg-red-500/5 hover:bg-red-500 text-red-500 hover:text-white rounded-3xl border border-red-500/10 transition-all duration-500 shadow-xl"
+                           >
+                             <Trash2 size={24} />
+                           </button>
+                         </div>
+
+                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                           {[
+                             { icon: <Flame size={24} className="text-orange-500" />, value: (selectedItem as IHabit).streak, label: "Current Streak" },
+                             { icon: <TrendingUp size={24} className="text-emerald-500" />, value: (selectedItem as IHabit).longestStreak, label: "Peak Performance" },
+                             { icon: <Activity size={24} className="text-blue-500" />, value: (selectedItem as IHabit).completions?.length || 0, label: "Total Signals" },
+                           ].map((stat, i) => (
+                             <div key={i} className="bg-white/[0.02] border border-white/5 rounded-[2.5rem] p-8 flex flex-col items-center justify-center group hover:bg-white/[0.04] transition-all duration-500">
+                               <div className="mb-4 group-hover:scale-110 transition-transform">{stat.icon}</div>
+                               <span className="text-4xl font-black italic tracking-tighter text-white">{stat.value}</span>
+                               <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mt-3 italic">{stat.label}</span>
+                             </div>
+                           ))}
+                         </div>
+
+                         <div className="bg-white/[0.02] border border-white/5 rounded-[3rem] p-10 space-y-8">
+                            <div className="flex items-center gap-4">
+                              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                              <h4 className="text-[11px] font-black uppercase tracking-[0.4em] text-white/30 italic">Manual Signal Transmission</h4>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                               <div className="md:col-span-1">
+                                  <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em] mb-3 block italic">Intensity</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    value={completionCount}
+                                    onChange={(e) => setCompletionCount(Number(e.target.value))}
+                                    className="w-full px-8 py-5 bg-black/40 border border-white/5 rounded-2xl text-white font-black text-lg focus:border-purple-500/30 focus:outline-none transition-all shadow-inner tabular-nums italic"
+                                  />
+                               </div>
+                               <div className="md:col-span-3">
+                                  <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em] mb-3 block italic">Contextual Analysis</label>
+                                  <input
+                                    type="text"
+                                    value={completionNotes}
+                                    onChange={(e) => setCompletionNotes(e.target.value)}
+                                    placeholder="Enter institutional context..."
+                                    className="w-full px-8 py-5 bg-black/40 border border-white/5 rounded-2xl text-white placeholder:text-white/10 font-black focus:border-purple-500/30 focus:outline-none transition-all shadow-inner italic"
+                                  />
+                               </div>
+                            </div>
+                            <button
+                              onClick={() => handleHabitComplete(selectedItem._id!)}
+                              className="w-full bg-white text-black py-6 rounded-3xl font-black text-[11px] uppercase tracking-[0.4em] hover:bg-purple-500 hover:text-white transition-all shadow-2xl shadow-white/5 active:scale-95 italic overflow-hidden group"
+                            >
+                              <span className="relative z-10">Transmit Signal Execution</span>
+                            </button>
+                         </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-center py-20 px-10">
+                         <div className="w-24 h-24 rounded-full bg-white/[0.02] border border-white/5 flex items-center justify-center mb-10 text-white/10">
+                            {activeTab === 'task' ? <CheckSquare size={40} /> : <Target size={40} />}
+                         </div>
+                         <h2 className="text-4xl font-black text-white italic uppercase tracking-tighter mb-4">{selectedItem.title}</h2>
+                         <p className="text-white/30 italic text-sm mb-12 max-w-lg">"{selectedItem.description || 'No description provided for this protocol node.'}"</p>
+                         <div className="flex gap-4">
+                            <button className="px-10 py-5 bg-white text-black rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] hover:bg-purple-500 hover:text-white transition-all italic">Calibrate Node</button>
+                            <button onClick={() => setDeleteDialog({ isOpen: true, item: selectedItem, type: activeTab })} className="px-10 py-5 bg-white/5 border border-white/10 text-white/40 hover:text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] transition-all italic">Purge Protocol</button>
+                         </div>
+                      </div>
+                    )}
+                 </motion.div>
+               ) : (
+                 <motion.div
+                   initial={{ opacity: 0 }}
+                   animate={{ opacity: 1 }}
+                   className="flex-1 flex flex-col items-center justify-center text-white/10"
+                 >
+                   <div className="w-24 h-24 rounded-full bg-white/[0.01] border border-dashed border-white/5 flex items-center justify-center mb-8">
+                     <Eye size={40} />
+                   </div>
+                   <p className="text-xs font-black uppercase tracking-[0.6em] italic">Awaiting Intelligence</p>
+                   <p className="mt-8 text-[9px] font-black italic text-white/5 tracking-[0.2em]">Select a ledger node to perform deep execution diagnostics.</p>
+                 </motion.div>
+               )}
+             </AnimatePresence>
+           </div>
         </div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
       <DeleteConfirmDialog
         isOpen={deleteDialog.isOpen}
-        onClose={() =>
-          setDeleteDialog({ isOpen: false, item: null, type: null })
-        }
-        onConfirm={() =>
-          deleteDialog.item &&
-          deleteDialog.type &&
-          handleDelete(deleteDialog.item, deleteDialog.type)
-        }
-        title={`Delete ${deleteDialog.type
-          ?.charAt(0)
-          .toUpperCase()}${deleteDialog.type?.slice(1)}`}
-        message={`Are you sure you want to delete "${deleteDialog.item?.title}"? This action cannot be undone.`}
+        onClose={() => setDeleteDialog({ isOpen: false, item: null, type: null })}
+        onConfirm={() => deleteDialog.item && deleteDialog.type && handleDelete(deleteDialog.item, deleteDialog.type)}
+        title="Institutional Purge"
+        message={`Terminate this ${deleteDialog.type} protocol node? All associated execution artifacts will be permanently purged from the institutional matrix.`}
       />
     </div>
   );

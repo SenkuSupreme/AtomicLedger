@@ -23,9 +23,16 @@ export default function DeleteConfirmDialog({
   useEffect(() => {
     if (isOpen) {
       setIsVisible(true);
+      document.body.style.overflow = "hidden";
     } else {
-      const timer = setTimeout(() => setIsVisible(false), 200);
-      return () => clearTimeout(timer);
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+        document.body.style.overflow = "unset";
+      }, 200);
+      return () => {
+        clearTimeout(timer);
+        document.body.style.overflow = "unset";
+      };
     }
   }, [isOpen]);
 
@@ -37,56 +44,66 @@ export default function DeleteConfirmDialog({
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+      {/* Institutional Backdrop */}
       <div
-        className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${
+        className={`absolute inset-0 bg-black/80 backdrop-blur-xl transition-opacity duration-500 ${
           isOpen ? "opacity-100" : "opacity-0"
         }`}
         onClick={onClose}
       />
 
-      {/* Dialog */}
+      {/* Persistence Decor */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-red-500/5 blur-[120px] rounded-full" />
+      </div>
+
+      {/* Dialog Mesh */}
       <div
-        className={`relative bg-[#0A0A0A] border border-white/20 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl transform transition-all duration-200 ${
+        className={`relative bg-[#0A0A0A]/90 border border-white/10 rounded-[2.5rem] p-10 max-w-md w-full shadow-[0_50px_100px_rgba(0,0,0,0.5)] transform transition-all duration-300 overflow-hidden ${
           isOpen
             ? "opacity-100 scale-100 translate-y-0"
-            : "opacity-0 scale-95 translate-y-4"
+            : "opacity-0 scale-95 translate-y-8"
         }`}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-500/20 rounded-lg">
-              <AlertTriangle size={20} className="text-red-400" />
+        {/* Modal Grain Effect */}
+        <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+        
+        <div className="relative z-10">
+          {/* Header Sector */}
+          <div className="flex items-center gap-5 mb-8 pb-6 border-b border-white/5">
+            <div className="p-4 bg-red-500/10 rounded-2xl border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.1)]">
+              <AlertTriangle size={24} className="text-red-500 animate-pulse" />
             </div>
-            <h3 className="text-lg font-bold text-white">{title}</h3>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                <span className="text-[9px] font-black uppercase tracking-[0.4em] text-red-500/60 font-mono">Critical Protocol</span>
+              </div>
+              <h3 className="text-2xl font-black text-white italic uppercase tracking-tighter">{title}</h3>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-white/10 rounded-lg transition-colors text-white/60 hover:text-white"
-          >
-            <X size={20} />
-          </button>
-        </div>
 
-        {/* Message */}
-        <p className="text-white/70 mb-6 leading-relaxed">{message}</p>
+          {/* Operational Scope */}
+          <p className="text-white/40 text-xs font-medium italic mb-10 leading-relaxed px-2">
+            "{message}"
+          </p>
 
-        {/* Actions */}
-        <div className="flex gap-3 justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-medium transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleConfirm}
-            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
-          >
-            Delete
-          </button>
+          {/* Action Ledger */}
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={onClose}
+              className="px-8 py-5 bg-white/5 hover:bg-white/10 text-white/40 hover:text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] border border-white/5 transition-all active:scale-95"
+            >
+              Abort
+            </button>
+            <button
+              onClick={handleConfirm}
+              className="px-8 py-5 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] shadow-[0_20px_40px_rgba(239,68,68,0.2)] transition-all active:scale-95 border border-red-400/20"
+            >
+              Terminate
+            </button>
+          </div>
         </div>
       </div>
     </div>

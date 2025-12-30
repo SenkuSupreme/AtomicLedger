@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
 import { IGoal } from "@/lib/models/Goal";
 
@@ -24,6 +24,14 @@ export default function GoalForm({ goal, onSave, onCancel }: GoalFormProps) {
   });
 
   const [newMilestone, setNewMilestone] = useState("");
+
+  // Body scroll lock
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,189 +78,183 @@ export default function GoalForm({ goal, onSave, onCancel }: GoalFormProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-[#0A0A0A] border border-white/20 rounded-xl p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-white tracking-tight">
-            {goal ? "Edit Goal" : "Create New Goal"}
-          </h2>
-          <button
-            onClick={onCancel}
-            className="text-white/40 hover:text-white/60 transition-colors"
-          >
-            <X size={20} />
-          </button>
-        </div>
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4 text-white">
+      {/* Background Decor */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/10 blur-[150px] -z-10" />
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">
-              Title *
-            </label>
-            <input
-              type="text"
-              required
-              value={formData.title}
-              onChange={(e) =>
-                setFormData({ ...formData, title: e.target.value })
-              }
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/40 focus:border-white/20 focus:outline-none transition-colors"
-              placeholder="Enter goal title"
-            />
-          </div>
+      <div className="bg-[#0A0A0A]/90 border border-white/5 rounded-[3.5rem] p-10 w-full max-w-2xl shadow-3xl relative overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Modal Grain Effect */}
+        <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
 
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/40 focus:border-white/20 focus:outline-none transition-colors resize-none"
-              rows={3}
-              placeholder="Enter goal description"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        <div className="relative z-10 flex flex-col flex-1 min-h-0">
+          <div className="flex items-center justify-between mb-10 border-b border-white/5 pb-8">
             <div>
-              <label className="block text-sm font-medium text-white/80 mb-2">
-                Category
-              </label>
-              <select
-                value={formData.category}
-                onChange={(e) =>
-                  setFormData({ ...formData, category: e.target.value as any })
-                }
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-white/20 focus:outline-none transition-colors"
-              >
-                <option value="trading">Trading</option>
-                <option value="learning">Learning</option>
-                <option value="financial">Financial</option>
-                <option value="personal">Personal</option>
-                <option value="other">Other</option>
-              </select>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">Intelligence Target</span>
+              </div>
+              <h2 className="text-3xl font-black tracking-tighter uppercase italic">
+                {goal ? "Modify Objective" : "Initialize Goal"}
+              </h2>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-white/80 mb-2">
-                Priority
-              </label>
-              <select
-                value={formData.priority}
-                onChange={(e) =>
-                  setFormData({ ...formData, priority: e.target.value as any })
-                }
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-white/20 focus:outline-none transition-colors"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </div>
+            <button
+              onClick={onCancel}
+              className="p-4 bg-white/5 hover:bg-white text-white/40 hover:text-black rounded-2xl border border-white/10 transition-all active:scale-95"
+            >
+              <X size={20} />
+            </button>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">
-              Target Date
-            </label>
-            <input
-              type="date"
-              value={formData.targetDate}
-              onChange={(e) =>
-                setFormData({ ...formData, targetDate: e.target.value })
-              }
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-white/20 focus:outline-none transition-colors"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">
-              Milestones
-            </label>
-            <div className="space-y-2">
-              {formData.milestones.map((milestone, index) => (
-                <div key={index} className="flex items-center gap-2">
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0 pb-10">
+              <div className="space-y-10 p-2">
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 block px-2">Objective Identifier</label>
                   <input
                     type="text"
-                    value={milestone.title}
-                    onChange={(e) => {
-                      const updatedMilestones = [...formData.milestones];
-                      updatedMilestones[index] = {
-                        ...milestone,
-                        title: e.target.value,
-                      };
-                      setFormData({
-                        ...formData,
-                        milestones: updatedMilestones,
-                      });
-                    }}
-                    className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/40 focus:border-white/20 focus:outline-none transition-colors"
+                    required
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="w-full px-8 py-6 bg-white/[0.03] border border-white/5 rounded-[2rem] text-white font-black uppercase italic tracking-tighter focus:bg-white/[0.06] focus:border-white/20 transition-all outline-none shadow-inner text-lg"
+                    placeholder="Enter objective title..."
                   />
-                  <button
-                    type="button"
-                    onClick={() => removeMilestone(index)}
-                    className="text-red-400 hover:text-red-300 transition-colors"
-                  >
-                    <Trash2 size={16} />
-                  </button>
                 </div>
-              ))}
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={newMilestone}
-                  onChange={(e) => setNewMilestone(e.target.value)}
-                  onKeyPress={(e) =>
-                    e.key === "Enter" && (e.preventDefault(), addMilestone())
-                  }
-                  className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/40 focus:border-white/20 focus:outline-none transition-colors"
-                  placeholder="Add milestone"
-                />
-                <button
-                  type="button"
-                  onClick={addMilestone}
-                  className="text-white/60 hover:text-white transition-colors"
-                >
-                  <Plus size={16} />
-                </button>
+
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 block px-2">Operational Context</label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full px-8 py-6 bg-white/[0.03] border border-white/5 rounded-[2rem] text-white/80 font-medium italic focus:bg-white/[0.06] focus:border-white/20 transition-all outline-none resize-none shadow-inner leading-relaxed"
+                    rows={4}
+                    placeholder="Describe the institutional target and expected outcome..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 block px-2">Domain Sector</label>
+                    <div className="relative">
+                      <select
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
+                        className="w-full px-8 py-5 bg-white/[0.03] border border-white/5 rounded-2xl text-white font-black uppercase tracking-widest focus:bg-white/[0.06] focus:border-white/20 transition-all outline-none cursor-pointer appearance-none"
+                      >
+                        <option value="trading">Trading</option>
+                        <option value="learning">Learning</option>
+                        <option value="financial">Financial</option>
+                        <option value="personal">Personal</option>
+                        <option value="other">Other</option>
+                      </select>
+                      <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-white/20">
+                        <Plus size={14} className="rotate-45" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 block px-2">Priority Index</label>
+                    <select
+                      value={formData.priority}
+                      onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
+                      className="w-full px-8 py-5 bg-white/[0.03] border border-white/5 rounded-2xl text-white font-black uppercase tracking-widest focus:bg-white/[0.06] focus:border-white/20 transition-all outline-none cursor-pointer appearance-none"
+                    >
+                      <option value="low">Low Intensity</option>
+                      <option value="medium">Standard Shift</option>
+                      <option value="high">Critical Sync</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 block px-2">Temporal Deadline</label>
+                  <input
+                    type="date"
+                    value={formData.targetDate}
+                    onChange={(e) => setFormData({ ...formData, targetDate: e.target.value })}
+                    className="w-full px-8 py-5 bg-white/[0.03] border border-white/5 rounded-2xl text-white font-black uppercase focus:bg-white/[0.06] focus:border-white/20 transition-all outline-none shadow-inner"
+                  />
+                </div>
+
+                <div className="space-y-6 bg-white/[0.01] p-8 rounded-[3rem] border border-white/5">
+                  <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 block px-2">Component Milestones</label>
+                  <div className="space-y-4">
+                    {formData.milestones.map((milestone, index) => (
+                      <div key={index} className="flex items-center gap-4 bg-white/[0.02] p-2 rounded-2xl border border-white/5 group hover:bg-white/[0.04] transition-all">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-[10px] ${milestone.completed ? "bg-green-500/20 text-green-500" : "bg-white/5 text-white/20"}`}>
+                          {String(index + 1).padStart(2, '0')}
+                        </div>
+                        <input
+                          type="text"
+                          value={milestone.title}
+                          onChange={(e) => {
+                            const updatedMilestones = [...formData.milestones];
+                            updatedMilestones[index] = { ...milestone, title: e.target.value };
+                            setFormData({ ...formData, milestones: updatedMilestones });
+                          }}
+                          className="flex-1 px-4 py-3 bg-transparent border-none text-white italic font-bold focus:ring-0 outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeMilestone(index)}
+                          className="p-3 bg-red-500/10 text-red-500 rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                    <div className="flex items-center gap-4 pt-4">
+                      <input
+                        type="text"
+                        value={newMilestone}
+                        onChange={(e) => setNewMilestone(e.target.value)}
+                        onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addMilestone())}
+                        className="flex-1 px-8 py-5 bg-white/[0.03] border border-white/5 rounded-2xl text-white italic placeholder:text-white/10 focus:bg-white/[0.06] focus:border-white/20 transition-all outline-none"
+                        placeholder="Identify milestone signal..."
+                      />
+                      <button
+                        type="button"
+                        onClick={addMilestone}
+                        className="p-5 bg-white text-black rounded-2xl hover:bg-blue-500 hover:text-white transition-all shadow-xl active:scale-95"
+                      >
+                        <Plus size={20} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 block px-2">Signal Fragments</label>
+                  <input
+                    type="text"
+                    value={formData.tags}
+                    onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                    className="w-full px-8 py-5 bg-white/[0.03] border border-white/5 rounded-2xl text-white/60 font-medium focus:bg-white/[0.06] focus:border-white/20 transition-all outline-none"
+                    placeholder="e.g., EURUSD, analysis, setup"
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">
-              Tags
-            </label>
-            <input
-              type="text"
-              value={formData.tags}
-              onChange={(e) =>
-                setFormData({ ...formData, tags: e.target.value })
-              }
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/40 focus:border-white/20 focus:outline-none transition-colors"
-              placeholder="Enter tags separated by commas"
-            />
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <button
-              type="submit"
-              className="flex-1 bg-white text-black py-3 px-4 rounded-xl font-bold hover:bg-gray-200 transition-colors"
-            >
-              {goal ? "Update Goal" : "Create Goal"}
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="flex-1 bg-white/10 text-white py-3 px-4 rounded-xl font-medium hover:bg-white/20 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
+            <div className="flex gap-6 pt-10 border-t border-white/5 mt-auto">
+              <button
+                type="submit"
+                className="flex-1 bg-white text-black py-6 px-10 rounded-2xl font-black text-xs uppercase tracking-[0.3em] hover:bg-gray-200 transition-all shadow-[0_20px_40px_rgba(255,255,255,0.1)] active:scale-95"
+              >
+                {goal ? "Commit Objective" : "Initialize Target"}
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="flex-[0.5] bg-white/5 text-white/40 py-6 px-10 rounded-2xl font-black text-xs uppercase tracking-[0.3em] border border-white/5 hover:bg-white/[0.08] hover:text-white transition-all active:scale-95"
+              >
+                Abort Protocol
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

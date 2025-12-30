@@ -10,11 +10,32 @@ export default function QuickNotes() {
     const [showLabel, setShowLabel] = useState(false);
     const [note, setNote] = useState('');
 
-    const handleSave = () => {
-        // Logic to save the note would go here
-        console.log('Saving note:', note);
-        setNote('');
-        setIsOpen(false);
+    const handleSave = async () => {
+        if (!note.trim()) return;
+
+        try {
+            const res = await fetch("/api/notes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: note.slice(0, 50) + (note.length > 50 ? "..." : ""),
+                    content: note,
+                    category: "trading",
+                    priority: "medium",
+                    isQuickNote: true,
+                    color: "#fef3c7",
+                }),
+            });
+
+            if (res.ok) {
+                setNote('');
+                setIsOpen(false);
+                // Optionally dispatch an event to refresh other widgets
+                window.dispatchEvent(new Event('noteCreated'));
+            }
+        } catch (error) {
+            console.error("Failed to save note:", error);
+        }
     };
 
     return (

@@ -20,3 +20,4 @@ export { default as NewsWidget } from './NewsWidget';
 export { default as WeatherWidget } from './WeatherWidget';
 export { default as ChecklistWidget } from './ChecklistWidget';
 export { default as ComprehensiveMetricsWidget } from './ComprehensiveMetricsWidget';
+export * from './TradingViewWidgets';

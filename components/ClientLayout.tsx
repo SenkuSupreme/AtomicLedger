@@ -7,6 +7,7 @@ import Header from './Header';
 import QuickNotes from './QuickNotes';
 import { AnimatePresence, motion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
+import { Toaster } from 'sonner';
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -27,21 +28,19 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       <div className={`flex-1 flex flex-col h-screen overflow-y-auto scrollbar-hide transition-all duration-500 ease-in-out ${isSidebarCollapsed ? 'ml-[80px]' : 'ml-[280px]'}`}>
         <Header />
         <main className="relative flex-1">
-            <AnimatePresence>
                 <motion.div
                     key={pathname}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
                     transition={{ duration: 0.2, ease: "linear" }}
                     className="p-8 pb-24"
                 >
                     {children}
                 </motion.div>
-            </AnimatePresence>
         </main>
       </div>
       <QuickNotes />
+      <Toaster position="top-right" theme="dark" richColors closeButton />
     </div>
   );
 }

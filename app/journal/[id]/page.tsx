@@ -29,9 +29,12 @@ import {
   ChevronDown,
   ChevronUp,
   RefreshCw,
+  ArrowUpRight,
+  ArrowDownRight,
   Share2,
   Download,
   Copy,
+  Activity,
 } from "lucide-react";
 import {
   calculateTradeMetrics,
@@ -40,7 +43,9 @@ import {
   formatRMultiple,
   TradeCalculationResult,
 } from "@/lib/utils/tradeCalculations";
+import { motion, AnimatePresence } from "framer-motion";
 import TradeCharts from "@/components/TradeCharts";
+import { toast } from "sonner";
 
 interface AIAnalysis {
   model?: string;
@@ -82,102 +87,87 @@ export default function TradeDetailPage() {
   const [uploading, setUploading] = useState(false);
   const [calculatedMetrics, setCalculatedMetrics] =
     useState<TradeCalculationResult | null>(null);
-  const [isAiCollapsed, setIsAiCollapsed] = useState(false);
+  const [isAiCollapsed, setIsAiCollapsed] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
 
-  // Share functionality
-  const generatePDF = async () => {
-    try {
-      const element = document.getElementById("trade-content");
-      if (!element) return;
-
-      // Dynamic import for client-side only
-      const html2canvas = (await import("html2canvas")).default;
-      const jsPDF = (await import("jspdf")).default;
-
-      const canvas = await html2canvas(element, {
-        backgroundColor: "#0A0A0A",
-        scale: 2,
-        logging: false,
-        useCORS: true,
-      });
-
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-
-      const imgWidth = 210;
-      const pageHeight = 295;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save(`trade-${(trade as any).symbol}-${(trade as any)._id}.pdf`);
-    } catch (error) {
-      console.error("PDF generation failed:", error);
-      alert("Failed to generate PDF. Please try again.");
-    }
-  };
+  // Share functionality - PDF generation removed, only trade card generation available
 
   const generateTradeCard = async () => {
     try {
+      toast.info("Generating trade card...");
       const cardElement = document.getElementById("trade-card");
       if (!cardElement) {
         console.error("Trade card element not found");
-        alert("Trade card element not found. Please try again.");
+        toast.error("Trade card element not found. Please try again.");
         return;
       }
 
+      // Store original className and remove it to avoid Tailwind positioning conflicts
+      const originalClassName = cardElement.className;
+      cardElement.className = "";
+
       // Make the card visible temporarily for capture
+      cardElement.style.display = "block";
       cardElement.style.position = "fixed";
       cardElement.style.top = "0";
       cardElement.style.left = "0";
+      cardElement.style.width = "420px";
+      cardElement.style.height = "650px";
       cardElement.style.zIndex = "9999";
+      cardElement.style.visibility = "visible";
+      cardElement.style.backgroundColor = "#0A0A0A";
+      cardElement.style.color = "#ffffff";
+      cardElement.style.overflow = "hidden";
 
-      const html2canvas = (await import("html2canvas")).default;
+      // Wait for rendering to ensure fonts are loaded
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      const canvas = await html2canvas(cardElement, {
-        backgroundColor: "#0A0A0A",
-        scale: 3,
-        logging: false,
-        useCORS: true,
-        width: 400,
-        height: 600,
-        allowTaint: true,
-        foreignObjectRendering: true,
+      const { toPng } = await import("html-to-image");
+
+      const dataUrl = await toPng(cardElement, {
+        backgroundColor: '#0A0A0A',
+        width: 420,
+        height: 650,
+        pixelRatio: 2, // High quality
+        cacheBust: true,
       });
-
-      // Hide the card again
-      cardElement.style.position = "fixed";
-      cardElement.style.top = "-9999px";
-      cardElement.style.left = "0";
-      cardElement.style.zIndex = "auto";
 
       // Create download link
       const link = document.createElement("a");
       link.download = `trade-card-${trade.symbol}-${trade._id}.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.href = dataUrl;
       link.click();
-    } catch (error) {
+      
+      toast.success("Trade card generated successfully!");
+    } catch (error: any) {
       console.error("Trade card generation failed:", error);
-      alert("Failed to generate trade card. Please try again.");
+      toast.error(`Failed to generate trade card: ${error.message || "Unknown error"}`);
+    } finally {
+      const cardElement = document.getElementById("trade-card");
+      if (cardElement) {
+        // Restore original className
+        cardElement.className = "fixed -top-[9999px] left-0 w-[420px] h-[650px] bg-[#0A0A0A] text-white overflow-hidden";
+        // Hide the card again
+        cardElement.style.display = "";
+        cardElement.style.position = "";
+        cardElement.style.top = "";
+        cardElement.style.left = "";
+        cardElement.style.width = "";
+        cardElement.style.height = "";
+        cardElement.style.zIndex = "";
+        cardElement.style.visibility = "";
+        cardElement.style.backgroundColor = "";
+        cardElement.style.color = "";
+        cardElement.style.overflow = "";
+      }
     }
   };
 
   const copyTradeLink = () => {
     const url = window.location.href;
     navigator.clipboard.writeText(url).then(() => {
-      alert("Trade link copied to clipboard!");
+      toast.success("Trade link copied to clipboard!");
     });
   };
 
@@ -378,9 +368,10 @@ export default function TradeDetailPage() {
         ...editForm,
         screenshots: [...currentScreenshots, ...uploadedUrls],
       });
+      toast.success("Screenshots uploaded successfully");
     } catch (error) {
       console.error("Upload failed:", error);
-      alert("Failed to upload images. Please try again.");
+      toast.error("Failed to upload images. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -461,7 +452,7 @@ export default function TradeDetailPage() {
 
   const analyzeWithAI = async () => {
     if (!trade.notes && !trade.description && !trade.mistakes) {
-      alert("No notes or trade data to analyze");
+      toast.info("No notes or trade data to analyze");
       return;
     }
 
@@ -489,6 +480,7 @@ export default function TradeDetailPage() {
       if (res.ok) {
         const data = await res.json();
         setAiAnalysis(data.analysis);
+        setIsAiCollapsed(true); // Automatically collapse after analysis as requested
 
         // Save AI analysis to database
         try {
@@ -508,7 +500,7 @@ export default function TradeDetailPage() {
       }
     } catch (error) {
       console.error("AI Analysis failed:", error);
-      alert("AI Analysis failed. Please try again.");
+      toast.error("AI Analysis failed. Please try again.");
     } finally {
       setAnalyzingAI(false);
     }
@@ -564,567 +556,502 @@ export default function TradeDetailPage() {
     );
 
   return (
-    <div className="space-y-8 text-white">
-      {/* Trade Card for Sharing (Hidden) */}
-      <div
-        id="trade-card"
-        className="fixed -top-[9999px] left-0 w-[380px] h-[600px] bg-black text-white overflow-hidden border border-white/20"
-        style={{ fontFamily: "Inter, sans-serif" }}
-      >
-        {/* 3D Grid Background */}
-        <div className="absolute inset-0">
-          {/* Base black background */}
-          <div className="absolute inset-0 bg-black"></div>
+    <div className="relative min-h-screen pb-20 font-sans text-white">
+      {/* Institutional Background Mesh */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+        <div className="absolute top-0 right-0 w-[1200px] h-[1200px] bg-blue-500/[0.03] blur-[150px] -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-[1200px] h-[1200px] bg-purple-500/[0.03] blur-[150px] translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+      </div>
 
-          {/* 3D Grid Effect */}
-          <div
-            className="absolute inset-0 opacity-20"
-            style={{
-              backgroundImage: `
-                linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px),
-                linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)
-              `,
-              backgroundSize: "40px 40px, 40px 40px, 8px 8px, 8px 8px",
-              backgroundPosition: "0 0, 0 0, 0 0, 0 0",
-            }}
-          ></div>
+      {/* Sharing Artifacts (Hidden) */}
+      <div className="hidden">
+        {/* Trade Card for Sharing */}
+        <div
+          id="trade-card"
+          className="fixed -top-[9999px] left-0 w-[420px] h-[650px] bg-[#050505] text-white overflow-hidden"
+          style={{ 
+            fontFamily: "Inter, sans-serif",
+            backgroundColor: "#050505"
+          }}
+        >
+          {/* 3D Star Background & Vignette */}
+          <div className="absolute inset-0 z-0">
+             {/* Stars - varied sizes */}
+             <div className="absolute inset-0" style={{
+                backgroundImage: 'radial-gradient(1px 1px at 20px 30px, #ffffff, rgba(0,0,0,0)), radial-gradient(1px 1px at 40px 70px, #ffffff, rgba(0,0,0,0)), radial-gradient(1px 1px at 50px 160px, #ffffff, rgba(0,0,0,0)), radial-gradient(1.5px 1.5px at 90px 40px, #ffffff, rgba(0,0,0,0)), radial-gradient(2px 2px at 130px 80px, #ffffff, rgba(0,0,0,0)), radial-gradient(1.5px 1.5px at 160px 120px, #ffffff, rgba(0,0,0,0))',
+                backgroundSize: '200px 200px',
+                opacity: 0.3
+             }}></div>
+             <div className="absolute inset-0" style={{
+                backgroundImage: 'radial-gradient(1px 1px at 10px 10px, #ffffff, rgba(0,0,0,0)), radial-gradient(1px 1px at 150px 150px, #ffffff, rgba(0,0,0,0))',
+                backgroundSize: '300px 300px',
+                opacity: 0.15,
+                transform: 'rotate(45deg)'
+             }}></div>
 
-          {/* 3D Perspective Lines */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 left-1/2 w-px h-full bg-gradient-to-b from-blue-500/50 via-transparent to-purple-500/50 transform -translate-x-1/2"></div>
-            <div className="absolute left-0 top-1/2 w-full h-px bg-gradient-to-r from-blue-500/50 via-transparent to-purple-500/50 transform -translate-y-1/2"></div>
+             {/* Vignette - Fading in from corners to middle */}
+             <div className="absolute inset-0" style={{
+                background: 'radial-gradient(circle at center, transparent 30%, #000000 120%)'
+             }}></div>
+             
+             {/* Center Glow connection */}
+             <div className="absolute inset-0 opacity-20" style={{
+                background: `radial-gradient(circle at center, ${trade.pnl > 0 ? '#34d39922' : '#f8717122'} 0%, transparent 70%)`
+             }}></div>
           </div>
-
-          {/* Corner Accents */}
-          <div className="absolute top-0 left-0 w-20 h-20 bg-gradient-to-br from-blue-500/20 to-transparent"></div>
-          <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl from-purple-500/20 to-transparent"></div>
-          <div className="absolute bottom-0 left-0 w-20 h-20 bg-gradient-to-tr from-emerald-500/20 to-transparent"></div>
-          <div className="absolute bottom-0 right-0 w-20 h-20 bg-gradient-to-tl from-orange-500/20 to-transparent"></div>
-        </div>
-
-        <div className="relative z-10 h-full flex flex-col p-4">
-          {/* Header Section */}
-          <div className="text-center mb-4">
-            {/* Brand */}
-            <div className="inline-flex items-center gap-2 mb-3 px-3 py-1.5 bg-white/10 rounded-lg border border-white/20">
-              <div className="w-5 h-5 bg-gradient-to-br from-blue-500 to-purple-500 rounded-md flex items-center justify-center">
-                <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-              </div>
-              <span className="text-white font-bold text-xs tracking-wide">
-                TRADE CARD
-              </span>
-            </div>
-
-            {/* Symbol & Direction */}
-            <h1 className="text-3xl font-black mb-3 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent tracking-tight">
-              {trade.symbol}
-            </h1>
-
-            <div className="flex items-center justify-center gap-2">
-              <div
-                className={`px-4 py-1 rounded-md text-xs font-bold border ${
-                  trade.direction === "long"
-                    ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
-                    : "bg-red-500/20 text-red-400 border-red-500/40"
-                }`}
-              >
-                {trade.direction.toUpperCase()}
-              </div>
-              <div className="px-3 py-1 bg-white/10 rounded-md text-xs text-white/80 border border-white/20">
-                {trade.assetType?.toUpperCase() || "FOREX"}
-              </div>
-            </div>
-          </div>
-
-          {/* P&L Display */}
-          <div className="text-center mb-4 p-3 bg-white/5 rounded-xl border border-white/20">
-            <div className="mb-1">
-              <span className="text-xs text-white/70 uppercase tracking-wider font-medium">
-                NET P&L
-              </span>
-            </div>
-            <div
-              className={`text-4xl font-black mb-1 tracking-tight ${
-                getDisplayValue(trade.pnl, calculatedMetrics?.netPnl) >= 0
-                  ? "text-emerald-400"
-                  : "text-red-400"
-              }`}
-            >
-              {getDisplayValue(trade.pnl, calculatedMetrics?.netPnl) >= 0
-                ? "+"
-                : ""}
-              $
-              {getDisplayValue(trade.pnl, calculatedMetrics?.netPnl).toFixed(2)}
-            </div>
-          </div>
-
-          {/* Entry/Exit Points */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="bg-white/5 rounded-xl p-3 border border-white/20">
-              <div className="text-center">
-                <div className="text-xs text-blue-400 uppercase tracking-wider font-bold mb-1">
-                  ENTRY
-                </div>
-                <div className="text-lg font-black text-white">
-                  $
-                  {(trade.entryPrice || 0).toFixed(
-                    trade.symbol?.includes("JPY") ? 3 : 5
-                  )}
+          
+          <div className="relative z-10 h-full flex flex-col p-8">
+            {/* Header: Date & Status */}
+            <div className="flex justify-between items-start mb-8">
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-[#ffffff66] font-semibold">
+                  {new Date(trade.timestampEntry).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                </span>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: trade.status === 'Open' ? '#3b82f6' : '#ffffff33' }}></div>
+                  <span className="text-[10px] uppercase tracking-widest text-[#ffffff99] font-semibold">{trade.status || 'CLOSED'}</span>
                 </div>
               </div>
-            </div>
-
-            <div className="bg-white/5 rounded-xl p-3 border border-white/20">
-              <div className="text-center">
-                <div className="text-xs text-purple-400 uppercase tracking-wider font-bold mb-1">
-                  EXIT
-                </div>
-                <div className="text-lg font-black text-white">
-                  {trade.exitPrice
-                    ? `$${trade.exitPrice.toFixed(
-                        trade.symbol?.includes("JPY") ? 3 : 5
-                      )}`
-                    : "OPEN"}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Key Metrics Grid */}
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            <div className="bg-white/5 rounded-lg p-3 border border-white/20">
-              <div className="text-center">
-                <div className="text-lg font-black text-white mb-1">
-                  {getDisplayValue(
-                    trade.rMultiple,
-                    calculatedMetrics?.rMultiple
-                  ).toFixed(1)}
-                  R
-                </div>
-                <div className="text-xs text-white/70 uppercase tracking-wider font-medium">
-                  R-MULT
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white/5 rounded-lg p-3 border border-white/20">
-              <div className="text-center">
-                <div className="text-lg font-black text-amber-400 mb-1">
-                  {getDisplayValue(
-                    trade.accountRisk,
-                    calculatedMetrics?.accountRisk
-                  ).toFixed(1)}
-                  %
-                </div>
-                <div className="text-xs text-amber-300/80 uppercase tracking-wider font-medium">
-                  RISK
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white/5 rounded-lg p-3 border border-white/20">
-              <div className="text-center">
-                <div className="text-lg font-black text-emerald-400 mb-1">
-                  {trade.quantity || 0}
-                </div>
-                <div className="text-xs text-emerald-300/80 uppercase tracking-wider font-medium">
-                  SIZE
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Stop Loss & Take Profit */}
-          {(trade.stopLoss || trade.takeProfit) && (
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              {trade.stopLoss && (
-                <div className="bg-red-500/10 rounded-lg p-3 border border-red-500/30">
-                  <div className="text-center">
-                    <div className="text-xs text-red-400 uppercase tracking-wider font-bold mb-1">
-                      STOP LOSS
-                    </div>
-                    <div className="text-sm font-black text-red-300">
-                      $
-                      {trade.stopLoss.toFixed(
-                        trade.symbol?.includes("JPY") ? 3 : 5
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {trade.takeProfit && (
-                <div className="bg-emerald-500/10 rounded-lg p-3 border border-emerald-500/30">
-                  <div className="text-center">
-                    <div className="text-xs text-emerald-400 uppercase tracking-wider font-bold mb-1">
-                      TAKE PROFIT
-                    </div>
-                    <div className="text-sm font-black text-emerald-300">
-                      $
-                      {trade.takeProfit.toFixed(
-                        trade.symbol?.includes("JPY") ? 3 : 5
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Date & Footer */}
-          <div className="mt-auto">
-            <div className="text-center mb-4">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 rounded-lg border border-white/20">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="text-xs text-white/90 font-medium">
-                  {new Date(trade.timestampEntry).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
+              <div className="px-3 py-1">
+                <span 
+                  className="text-[10px] font-bold uppercase tracking-widest"
+                  style={{ color: trade.direction === 'long' ? '#34d399' : '#f87171' }}
+                >
+                  {trade.direction?.toUpperCase()}
                 </span>
               </div>
             </div>
 
-            <div className="h-px bg-gradient-to-r from-transparent via-white/30 to-transparent mb-3"></div>
-            <div className="text-center">
-              <span className="text-white/60 text-xs font-medium tracking-wide">
-                PROFESSIONAL ANALYSIS
+            {/* Main Asset Info & Time Context */}
+            <div className="text-center mb-8">
+              <h1 className="text-6xl font-black text-white mb-2 tracking-tighter drop-shadow-2xl">
+                {trade.symbol}
+              </h1>
+              <span className="text-[10px] uppercase tracking-[0.3em] text-[#ffffff66] font-medium">
+                {trade.assetType?.toUpperCase() || "ASSET"} • EXECUTION REPORT
+              </span>
+            </div>
+
+            {/* Temporal Data Floating in Space */}
+            <div className="w-full mb-8 flex justify-center items-center px-4 relative">
+                {/* Connecting Line */}
+                <div className="absolute top-1/2 left-20 right-20 h-px bg-gradient-to-r from-transparent via-[#ffffff1a] to-transparent"></div>
+                
+                <div className="w-full flex justify-between items-center z-10">
+                  <div className="flex flex-col gap-1 text-center bg-[#00000040] p-2 rounded-lg backdrop-blur-sm">
+                    <span className="text-[8px] uppercase tracking-widest text-[#ffffff4d] font-semibold">Entry Time</span>
+                    <span className="text-sm font-mono text-white font-medium tracking-tighter">
+                      {new Date(trade.timestampEntry).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })} <span className="text-[8px] text-[#ffffff33]">UTC</span>
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col gap-1 text-center bg-[#00000040] p-2 rounded-lg backdrop-blur-sm">
+                    <span className="text-[8px] uppercase tracking-widest text-[#ffffff4d] font-semibold">Exit Time</span>
+                    <span className="text-sm font-mono text-white font-medium tracking-tighter">
+                      {trade.timestampExit ? new Date(trade.timestampExit).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }) : "--:--"} <span className="text-[8px] text-[#ffffff33]">UTC</span>
+                    </span>
+                  </div>
+                </div>
+            </div>
+
+            {/* P&L Display & Outcome */}
+            <div className="text-center mb-10 relative">
+              <div 
+                className="text-7xl font-medium tracking-tighter tabular-nums relative inline-block z-10 drop-shadow-lg"
+                style={{ color: getDisplayValue(trade.pnl, calculatedMetrics?.netPnl) >= 0 ? "#34d399" : "#f87171" }}
+              >
+                {getDisplayValue(trade.pnl, calculatedMetrics?.netPnl) >= 0 ? "+" : ""}
+                ${Math.abs(getDisplayValue(trade.pnl, calculatedMetrics?.netPnl)).toFixed(2)}
+              </div>
+              <div className="mt-2 flex items-center justify-center gap-2">
+                 <span className="text-[10px] uppercase tracking-[0.2em] text-[#ffffff4d] font-semibold">Net P&L</span>
+                 <span className="text-[10px] uppercase tracking-[0.1em] text-[#ffffff20]">•</span>
+                 <span 
+                   className="text-[10px] uppercase tracking-[0.2em] font-bold"
+                   style={{ color: getDisplayValue(trade.pnl, calculatedMetrics?.netPnl) >= 0 ? "#34d399" : "#f87171" }}
+                 >
+                   {getDisplayValue(trade.pnl, calculatedMetrics?.netPnl) > 0 ? "PROFIT" : getDisplayValue(trade.pnl, calculatedMetrics?.netPnl) < 0 ? "LOSS" : "BREAK-EVEN"}
+                 </span>
+              </div>
+            </div>
+
+            {/* Detailed Execution Matrix */}
+            <div className="grid grid-cols-4 gap-2 mb-6 pt-6 border-t border-[#ffffff0a]">
+              <div className="flex flex-col gap-1 text-center">
+                <span className="text-[8px] uppercase tracking-widest text-[#ffffff4d] font-semibold">Entry</span>
+                <span className="text-sm font-medium text-[#ffffffcc] tabular-nums">
+                  {trade.entryPrice?.toFixed(trade.symbol?.includes("JPY") ? 3 : 5)}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1 text-center">
+                <span className="text-[8px] uppercase tracking-widest text-[#ffffff4d] font-semibold">Exit</span>
+                <span className="text-sm font-medium text-[#ffffffcc] tabular-nums">
+                  {trade.exitPrice?.toFixed(trade.symbol?.includes("JPY") ? 3 : 5) || "---"}
+                </span>
+              </div>
+               <div className="flex flex-col gap-1 text-center">
+                <span className="text-[8px] uppercase tracking-widest text-[#ffffff4d] font-semibold">Stop</span>
+                <span className="text-sm font-medium text-[#f87171] tabular-nums">
+                  {trade.stopLoss?.toFixed(trade.symbol?.includes("JPY") ? 3 : 5) || "---"}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1 text-center">
+                <span className="text-[8px] uppercase tracking-widest text-[#ffffff4d] font-semibold">Target</span>
+                <span className="text-sm font-medium text-[#34d399] tabular-nums">
+                  {trade.takeProfit?.toFixed(trade.symbol?.includes("JPY") ? 3 : 5) || "---"}
+                </span>
+              </div>
+            </div>
+
+            {/* Performance Metrics */}
+            <div className="grid grid-cols-2 gap-8 py-4 bg-[#ffffff05] rounded-lg">
+              <div className="flex flex-col gap-1 text-center">
+                <span className="text-[9px] uppercase tracking-widest text-[#ffffff4d] font-semibold">Risk Load</span>
+                <span className="text-xl font-bold text-[#ffffff] tabular-nums">
+                  {getDisplayValue(trade.accountRisk, calculatedMetrics?.accountRisk).toFixed(1)}%
+                </span>
+              </div>
+              <div className="flex flex-col gap-1 text-center">
+                <span className="text-[9px] uppercase tracking-widest text-[#ffffff4d] font-semibold">R-Multiple</span>
+                <span 
+                  className="text-xl font-bold tabular-nums"
+                  style={{ color: getDisplayValue(trade.rMultiple, calculatedMetrics?.rMultiple) >= 0 ? '#34d399' : '#f87171' }}
+                >
+                  {getDisplayValue(trade.rMultiple, calculatedMetrics?.rMultiple).toFixed(2)}R
+                </span>
+              </div>
+            </div>
+
+            {/* Footer Brand */}
+            <div className="mt-4 flex justify-center items-center">
+              <span className="text-[9px] font-bold text-white/20 uppercase tracking-[0.3em] font-mono">
+                APEX LEDGER
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div id="trade-content">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-6">
-          <div className="flex items-center gap-4">
+      {/* Navigation & Actions Terminal */}
+      <div className="sticky top-0 z-50 px-8 py-6 backdrop-blur-xl border-b border-white/5 bg-[#0A0A0A]/40 mb-12">
+        <div className="max-w-[1600px] mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-8">
             <button
               onClick={() => router.back()}
-              className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+              className="group p-4 bg-white/[0.03] border border-white/10 rounded-2xl hover:bg-white/[0.06] hover:border-white/20 transition-all active:scale-95"
             >
-              <ArrowLeft size={20} className="text-gray-400" />
+              <ArrowLeft size={18} className="text-white/40 group-hover:text-white transition-colors" />
             </button>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                {trade.symbol}
-                <span
-                  className={`px-3 py-1 rounded-lg text-sm font-bold ${
-                    trade.direction === "long"
-                      ? "bg-green-500/20 text-green-400"
-                      : "bg-red-500/20 text-red-400"
-                  }`}
-                >
-                  {trade.direction.toUpperCase()}
-                </span>
-              </h1>
-              <p className="text-white/60 text-sm mt-1">
-                {new Date(trade.timestampEntry).toLocaleDateString()} •{" "}
-                {trade.assetType}
-              </p>
+            <div className="h-8 w-px bg-white/5" />
+            <div className="space-y-1.5">
+               <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-full">
+                     <div className="w-1 h-1 bg-blue-500 rounded-full animate-pulse" />
+                     <span className="text-[8px] font-black uppercase tracking-[0.2em] text-blue-400 italic">Forensic Analysis 09</span>
+                  </div>
+                  <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Temporal Artifact: Synchronized</span>
+               </div>
+               <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white/90 break-words">
+                 {trade.symbol} <span className="text-white/20">/</span> {trade.direction === 'long' ? 'Buy_Pulse' : 'Sell_Pulse'}
+               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowShareModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-green-500/20 text-green-400 border border-green-500/30 rounded-lg hover:bg-green-500/30 transition-colors"
-            >
-              <Share2 size={16} />
-              Share
-            </button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1 bg-white/[0.02] border border-white/5 p-1 rounded-2xl">
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="flex items-center gap-3 px-6 py-2.5 rounded-xl hover:bg-white/[0.05] text-white/40 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest italic"
+              >
+                <Share2 size={14} />
+                Distribute
+              </button>
+              <button
+                onClick={analyzeWithAI}
+                disabled={analyzingAI}
+                className="flex items-center gap-3 px-6 py-2.5 bg-purple-500/10 border border-purple-500/20 rounded-xl text-purple-400 hover:bg-purple-500/20 transition-all text-[10px] font-black uppercase tracking-widest italic disabled:opacity-30"
+              >
+                <Brain size={14} className={analyzingAI ? "animate-spin" : ""} />
+                {analyzingAI ? "Processing..." : "Neural Scan"}
+              </button>
+            </div>
 
-            <button
-              onClick={analyzeWithAI}
-              disabled={analyzingAI}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-lg hover:bg-purple-500/30 transition-colors disabled:opacity-50"
-            >
-              <Brain size={16} />
-              {analyzingAI ? "Analyzing..." : "AI Analysis"}
-            </button>
+            <div className="h-8 w-px bg-white/5" />
 
             {!isEditing ? (
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-sky-500/20 text-sky-400 border border-sky-500/30 rounded-lg hover:bg-sky-500/30 transition-colors"
+                className="flex items-center gap-4 bg-white text-black px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] hover:bg-blue-500 hover:text-white transition-all shadow-2xl active:scale-95"
               >
-                <Edit3 size={16} />
-                Edit Trade
+                <Edit3 size={14} />
+                Recalibrate
               </button>
             ) : (
-              <div className="flex gap-2">
+              <div className="flex gap-3">
                 <button
                   onClick={() => setIsEditing(false)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-500/20 text-gray-400 border border-gray-500/30 rounded-lg hover:bg-gray-500/30 transition-colors"
+                  className="px-6 py-3 border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-white hover:bg-white/5 transition-all"
                 >
-                  <X size={16} />
-                  Cancel
+                  Terminate
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-500/20 text-green-400 border border-green-500/30 rounded-lg hover:bg-green-500/30 transition-colors disabled:opacity-50"
+                  className="px-8 py-3 bg-emerald-500 text-black rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-emerald-400 transition-all shadow-2xl disabled:opacity-30"
                 >
-                  <Save size={16} />
-                  {saving ? "Saving..." : "Save"}
+                  {saving ? "Storing..." : "Commit Changes"}
                 </button>
               </div>
             )}
-
+            
             <button
-              onClick={() => setShowDeleteDialog(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/30 transition-colors"
+               onClick={() => setShowDeleteDialog(true)}
+               className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 hover:bg-rose-500 hover:text-white transition-all group"
             >
-              <Trash2 size={16} />
+               <Trash2 size={16} className="group-hover:rotate-12 transition-transform" />
             </button>
           </div>
         </div>
+      </div>
 
-        {/* AI Analysis Results */}
+      <div className="max-w-[1600px] mx-auto px-8 space-y-12">
+        {/* Trade Metadata Matrix (Replacement for original header/actions) */}
+
+        {/* Forensic Neural Audit */}
         {aiAnalysis && (
-          <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl overflow-hidden">
-            <div className="bg-purple-500/10 px-6 py-4 border-b border-purple-500/20">
+          <div className="bg-[#0A0A0A] border border-purple-500/20 rounded-2xl overflow-hidden relative group shadow-[0_0_30px_rgba(168,85,247,0.05)]">
+            <div className="absolute inset-0 bg-purple-500/[0.02] -z-10" />
+            
+            <div className="bg-purple-500/5 px-6 py-4 border-b border-purple-500/10">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Brain size={20} className="text-purple-400" />
-                  <h3 className="text-lg font-bold text-purple-400">
-                    Professional Trading Analysis
-                  </h3>
+                <div className="flex items-center gap-4">
+                  <div className="p-2 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                    <Brain size={20} className="text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-purple-400 uppercase tracking-widest flex items-center gap-2">
+                       Forensic Neural Audit
+                       <span className="px-1.5 py-0.5 rounded text-[8px] bg-purple-500/20 text-purple-300 border border-purple-500/30">CONFIDENTIAL</span>
+                    </h3>
+                    <div className="flex items-center gap-3 mt-1">
+                      <div className="flex items-center gap-1.5">
+                         <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                         <span className="text-[10px] font-mono text-purple-300/60 uppercase">
+                            Model: {aiAnalysis?.model || "APEX_NEURAL_V1"}
+                         </span>
+                      </div>
+                      <span className="text-purple-500/20">•</span>
+                      <span className="text-[10px] font-mono text-purple-300/60 uppercase">
+                        {aiAnalysis && aiAnalysis.timestamp ? new Date(aiAnalysis.timestamp).toLocaleTimeString() : "SYNC_PENDING"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
+                
                 <div className="flex items-center gap-3">
                   <button
                     onClick={analyzeWithAI}
                     disabled={analyzingAI}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-purple-600/20 text-purple-300 border border-purple-500/30 rounded-lg hover:bg-purple-600/30 transition-colors disabled:opacity-50 text-xs"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 text-purple-300 border border-purple-500/20 rounded-lg hover:bg-purple-500/20 transition-all disabled:opacity-50 text-[10px] uppercase tracking-wider font-bold"
                   >
-                    <RefreshCw size={14} />
-                    {analyzingAI ? "Re-analyzing..." : "Re-analyze"}
+                    <RefreshCw size={12} className={analyzingAI ? "animate-spin" : ""} />
+                    {analyzingAI ? "Processing..." : "Rerun Scan"}
                   </button>
-                  <div className="text-xs text-purple-300 font-mono">
-                    Model: {aiAnalysis?.model || "Unknown"} •{" "}
-                    {aiAnalysis?.timestamp
-                      ? new Date(aiAnalysis.timestamp).toLocaleTimeString()
-                      : "Unknown time"}
-                  </div>
+                  
                   <button
                     onClick={() => setIsAiCollapsed(!isAiCollapsed)}
-                    className="p-1 hover:bg-purple-500/20 rounded transition-colors"
+                    className="p-1.5 hover:bg-purple-500/10 rounded-lg transition-colors border border-transparent hover:border-purple-500/20 text-purple-400"
                   >
                     {isAiCollapsed ? (
-                      <ChevronDown size={16} className="text-purple-400" />
+                      <ChevronDown size={16} />
                     ) : (
-                      <ChevronUp size={16} className="text-purple-400" />
+                      <ChevronUp size={16} />
                     )}
                   </button>
                 </div>
               </div>
             </div>
-
-            {!isAiCollapsed && (
-              <div className="p-6 space-y-6">
-                {/* Trader Score Dashboard */}
-                {aiAnalysis?.sections?.traderScore && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div className="bg-black/20 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-white mb-1">
-                        {aiAnalysis.sections.traderScore.overall || "0"}
-                      </div>
-                      <div className="text-xs text-purple-300 uppercase tracking-wider">
-                        Overall
-                      </div>
-                    </div>
-                    <div className="bg-black/20 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-white mb-1">
-                        {aiAnalysis.sections.traderScore.riskDiscipline || "0"}
-                      </div>
-                      <div className="text-xs text-purple-300 uppercase tracking-wider">
-                        Risk
-                      </div>
-                    </div>
-                    <div className="bg-black/20 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-white mb-1">
-                        {aiAnalysis.sections.traderScore.executionQuality ||
-                          "0"}
-                      </div>
-                      <div className="text-xs text-purple-300 uppercase tracking-wider">
-                        Execution
-                      </div>
-                    </div>
-                    <div className="bg-black/20 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-white mb-1">
-                        {aiAnalysis.sections.traderScore.consistency || "0"}
-                      </div>
-                      <div className="text-xs text-purple-300 uppercase tracking-wider">
-                        Consistency
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Full Analysis Text */}
-                <div className="bg-black/10 rounded-lg p-6 border border-white/5">
-                  <div className="prose prose-invert max-w-none">
-                    <div className="text-sm leading-relaxed space-y-2">
-                      {renderMarkdownText(
-                        aiAnalysis?.fullAnalysis || "No analysis available"
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick Action Items */}
-                {(aiAnalysis?.sections?.whatMustStop ||
-                  aiAnalysis?.sections?.actionPlan) && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {aiAnalysis.sections?.whatMustStop && (
-                      <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4">
-                        <h4 className="text-sm font-bold text-red-400 mb-2 uppercase tracking-wider">
-                          🚫 Must Stop Immediately
-                        </h4>
-                        <div className="text-sm text-white/80">
-                          {aiAnalysis.sections.whatMustStop}
+            
+            <AnimatePresence>
+              {!isAiCollapsed && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-6 space-y-6">
+                    {/* Trader Score Dashboard */}
+                    {aiAnalysis?.sections?.traderScore && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div className="bg-black/20 rounded-lg p-4 text-center">
+                          <div className="text-2xl font-bold text-white mb-1">
+                            {aiAnalysis?.sections?.traderScore?.overall || "0"}
+                          </div>
+                          <div className="text-xs text-purple-300 uppercase tracking-wider">
+                            Overall
+                          </div>
+                        </div>
+                        <div className="bg-black/20 rounded-lg p-4 text-center">
+                          <div className="text-2xl font-bold text-white mb-1">
+                            {aiAnalysis?.sections?.traderScore?.riskDiscipline || "0"}
+                          </div>
+                          <div className="text-xs text-purple-300 uppercase tracking-wider">
+                            Risk
+                          </div>
+                        </div>
+                        <div className="bg-black/20 rounded-lg p-4 text-center">
+                          <div className="text-2xl font-bold text-white mb-1">
+                            {aiAnalysis?.sections?.traderScore?.executionQuality ||
+                              "0"}
+                          </div>
+                          <div className="text-xs text-purple-300 uppercase tracking-wider">
+                            Execution
+                          </div>
+                        </div>
+                        <div className="bg-black/20 rounded-lg p-4 text-center">
+                          <div className="text-2xl font-bold text-white mb-1">
+                            {aiAnalysis?.sections?.traderScore?.consistency || "0"}
+                          </div>
+                          <div className="text-xs text-purple-300 uppercase tracking-wider">
+                            Consistency
+                          </div>
                         </div>
                       </div>
                     )}
 
-                    {aiAnalysis.sections?.actionPlan && (
-                      <div className="bg-green-500/5 border border-green-500/20 rounded-lg p-4">
-                        <h4 className="text-sm font-bold text-green-400 mb-2 uppercase tracking-wider">
-                          ✅ Action Plan
-                        </h4>
-                        <div className="text-sm text-white/80">
-                          {aiAnalysis.sections.actionPlan}
+                    {/* Full Analysis Text */}
+                    <div className="bg-black/10 rounded-lg p-6 border border-white/5">
+                      <div className="prose prose-invert max-w-none">
+                        <div className="text-sm leading-relaxed space-y-2">
+                          {renderMarkdownText(
+                            aiAnalysis?.fullAnalysis || "No analysis available"
+                          )}
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Quick Action Items */}
+                    {(aiAnalysis?.sections?.whatMustStop ||
+                      aiAnalysis?.sections?.actionPlan) && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {aiAnalysis?.sections?.whatMustStop && (
+                          <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4">
+                            <h4 className="text-sm font-bold text-red-400 mb-2 uppercase tracking-wider">
+                              🚫 Must Stop Immediately
+                            </h4>
+                            <div className="text-sm text-white/80">
+                              {aiAnalysis?.sections?.whatMustStop}
+                            </div>
+                          </div>
+                        )}
+
+                        {aiAnalysis?.sections?.actionPlan && (
+                          <div className="bg-green-500/5 border border-green-500/20 rounded-lg p-4">
+                            <h4 className="text-sm font-bold text-green-400 mb-2 uppercase tracking-wider">
+                              ✅ Action Plan
+                            </h4>
+                            <div className="text-sm text-white/80">
+                              {aiAnalysis?.sections?.actionPlan}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
-            )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 
-        {/* Performance Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-          <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <TrendingUp size={20} className="text-blue-500" />
-              <span
-                className={`text-2xl font-bold ${
-                  getDisplayValue(
-                    trade.grossPnl,
-                    calculatedMetrics?.grossPnl
-                  ) >= 0
-                    ? "text-green-500"
-                    : "text-red-500"
-                }`}
-              >
-                {getDisplayValue(trade.grossPnl, calculatedMetrics?.grossPnl) >=
-                0
-                  ? "+"
-                  : ""}
-                $
-                {getDisplayValue(
-                  trade.grossPnl,
-                  calculatedMetrics?.grossPnl
-                ).toFixed(2)}
-              </span>
-            </div>
-            <div className="text-xs text-white/60 uppercase tracking-wider">
-              Gross Yield
-            </div>
+        {/* Quant Metrics Array */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {/* Gross Yield */}
+          <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-5 relative group">
+             <div className="absolute inset-0 bg-blue-500/[0.02] -z-10 group-hover:opacity-100 transition-opacity opacity-0" />
+             <div className="flex flex-col h-full justify-between">
+                <div className="flex items-center justify-between mb-3">
+                   <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">Gross_Yield</span>
+                   <TrendingUp size={12} className="text-blue-500/50" />
+                </div>
+                <div className={`text-xl font-black font-mono tracking-tighter ${getDisplayValue(trade.grossPnl, calculatedMetrics?.grossPnl) >= 0 ? "text-blue-400" : "text-rose-400"}`}>
+                   {getDisplayValue(trade.grossPnl, calculatedMetrics?.grossPnl) >= 0 ? "+" : ""}${getDisplayValue(trade.grossPnl, calculatedMetrics?.grossPnl).toFixed(2)}
+                </div>
+             </div>
+          </div>
+          
+          {/* Net P&L */}
+          <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-5 relative group">
+             <div className="absolute inset-0 bg-emerald-500/[0.02] -z-10 group-hover:opacity-100 transition-opacity opacity-0" />
+             <div className="flex flex-col h-full justify-between">
+                <div className="flex items-center justify-between mb-3">
+                   <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">Net_Artifact</span>
+                   <DollarSign size={12} className="text-emerald-500/50" />
+                </div>
+                <div className={`text-xl font-black font-mono tracking-tighter ${getDisplayValue(trade.pnl, calculatedMetrics?.netPnl) >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                   {getDisplayValue(trade.pnl, calculatedMetrics?.netPnl) >= 0 ? "+" : ""}${getDisplayValue(trade.pnl, calculatedMetrics?.netPnl).toFixed(2)}
+                </div>
+             </div>
           </div>
 
-          <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <DollarSign size={20} className="text-green-500" />
-              <span
-                className={`text-2xl font-bold ${
-                  getDisplayValue(trade.pnl, calculatedMetrics?.netPnl) >= 0
-                    ? "text-green-500"
-                    : "text-red-500"
-                }`}
-              >
-                {getDisplayValue(trade.pnl, calculatedMetrics?.netPnl) >= 0
-                  ? "+"
-                  : ""}
-                $
-                {getDisplayValue(trade.pnl, calculatedMetrics?.netPnl).toFixed(
-                  2
-                )}
-              </span>
-            </div>
-            <div className="text-xs text-white/60 uppercase tracking-wider">
-              Net P&L
-            </div>
+          {/* R-Multiple */}
+           <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-5 relative group">
+             <div className="absolute inset-0 bg-sky-500/[0.02] -z-10 group-hover:opacity-100 transition-opacity opacity-0" />
+             <div className="flex flex-col h-full justify-between">
+                <div className="flex items-center justify-between mb-3">
+                   <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">R_Multiple</span>
+                   <Target size={12} className="text-sky-500/50" />
+                </div>
+                <div className="text-xl font-black font-mono tracking-tighter text-sky-400">
+                   {getDisplayValue(trade.rMultiple, calculatedMetrics?.rMultiple).toFixed(2)}R
+                </div>
+             </div>
           </div>
 
-          <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <Target size={20} className="text-sky-500" />
-              <span className="text-2xl font-bold text-white">
-                {getDisplayValue(
-                  trade.rMultiple,
-                  calculatedMetrics?.rMultiple
-                ).toFixed(2)}
-                R
-              </span>
-            </div>
-            <div className="text-xs text-white/60 uppercase tracking-wider">
-              R-Multiple
-            </div>
+          {/* Account Risk */}
+           <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-5 relative group">
+             <div className="absolute inset-0 bg-amber-500/[0.02] -z-10 group-hover:opacity-100 transition-opacity opacity-0" />
+             <div className="flex flex-col h-full justify-between">
+                <div className="flex items-center justify-between mb-3">
+                   <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">Risk_Load</span>
+                   <Shield size={12} className="text-amber-500/50" />
+                </div>
+                <div className="text-xl font-black font-mono tracking-tighter text-amber-400">
+                   {getDisplayValue(trade.accountRisk, calculatedMetrics?.accountRisk).toFixed(2)}%
+                </div>
+             </div>
           </div>
 
-          <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <Shield size={20} className="text-amber-500" />
-              <span className="text-2xl font-bold text-white">
-                {getDisplayValue(
-                  trade.accountRisk,
-                  calculatedMetrics?.accountRisk
-                ).toFixed(2)}
-                %
-              </span>
-            </div>
-            <div className="text-xs text-white/60 uppercase tracking-wider">
-              Account Risk
-            </div>
+          {/* Risk Amount */}
+           <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-5 relative group">
+             <div className="absolute inset-0 bg-purple-500/[0.02] -z-10 group-hover:opacity-100 transition-opacity opacity-0" />
+             <div className="flex flex-col h-full justify-between">
+                <div className="flex items-center justify-between mb-3">
+                   <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">Risk_Value</span>
+                   <Calculator size={12} className="text-purple-500/50" />
+                </div>
+                <div className="text-xl font-black font-mono tracking-tighter text-purple-400">
+                   ${getDisplayValue(trade.riskAmount, calculatedMetrics?.riskAmount).toFixed(2)}
+                </div>
+             </div>
           </div>
-
-          <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <Calculator size={20} className="text-purple-500" />
-              <span className="text-2xl font-bold text-white">
-                $
-                {getDisplayValue(
-                  trade.riskAmount,
-                  calculatedMetrics?.riskAmount
-                ).toFixed(2)}
-              </span>
-            </div>
-            <div className="text-xs text-white/60 uppercase tracking-wider">
-              Risk Amount
-            </div>
-          </div>
-
-          <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <BarChart3 size={20} className="text-purple-500" />
-              <span className="text-2xl font-bold text-white">
-                {getDisplayValue(
-                  trade.targetRR,
-                  calculatedMetrics?.targetRR
-                ).toFixed(1)}{" "}
-                : 1
-              </span>
-            </div>
-            <div className="text-xs text-white/60 uppercase tracking-wider">
-              Risk-Reward
-            </div>
+          
+          {/* Target RR */}
+           <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-5 relative group">
+             <div className="absolute inset-0 bg-indigo-500/[0.02] -z-10 group-hover:opacity-100 transition-opacity opacity-0" />
+             <div className="flex flex-col h-full justify-between">
+                <div className="flex items-center justify-between mb-3">
+                   <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em]">Target_RR</span>
+                   <BarChart3 size={12} className="text-indigo-500/50" />
+                </div>
+                <div className="text-xl font-black font-mono tracking-tighter text-indigo-400">
+                   1:{getDisplayValue(trade.targetRR, calculatedMetrics?.targetRR).toFixed(1)}
+                </div>
+             </div>
           </div>
         </div>
 
@@ -1134,472 +1061,292 @@ export default function TradeDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Trade Details */}
-            <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-8">
-              <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                <BarChart3 size={20} />
-                Trade Execution
-              </h3>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                <div>
-                  <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
-                    Entry Price
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      step="0.00001"
-                      value={editForm.entryPrice || ""}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          entryPrice: parseFloat(e.target.value),
-                        })
-                      }
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-sky-500/50 outline-none"
-                    />
-                  ) : (
-                    <p className="text-lg font-bold text-white">
-                      {trade.entryPrice?.toFixed(5) || "-"}
-                    </p>
-                  )}
+            {/* Trade Details Forensic Matrix */}
+            <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl overflow-hidden relative group">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 opacity-50" />
+              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              
+              <div className="relative p-8">
+                <div className="flex items-center justify-between mb-12">
+                  <div className="space-y-1">
+                    <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white flex items-center gap-3">
+                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                      Execution Artifacts
+                    </h3>
+                    <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] italic">Forensic Detail Matrix • System Sync Optimized</p>
+                  </div>
+                  <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] italic">
+                    ID_TERMINAL: {trade._id.slice(-8).toUpperCase()}
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
-                    Exit Price
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      step="0.00001"
-                      value={editForm.exitPrice || ""}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          exitPrice: parseFloat(e.target.value),
-                        })
-                      }
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-sky-500/50 outline-none"
-                    />
-                  ) : (
-                    <p className="text-lg font-bold text-white">
-                      {trade.exitPrice?.toFixed(5) || "-"}
-                    </p>
-                  )}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  {/* Entry Hub */}
+                  <div className="space-y-4">
+                    <div className="p-4 bg-white/[0.01] rounded-2xl group/item hover:bg-white/[0.03] transition-all">
+                      <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] block mb-2 italic">Entry_Signal</label>
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          step="0.00001"
+                          value={editForm.entryPrice || ""}
+                          onChange={(e) => setEditForm({...editForm, entryPrice: parseFloat(e.target.value)})}
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-blue-400 font-mono text-sm focus:border-blue-500/50 outline-none transition-all"
+                        />
+                      ) : (
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-black text-blue-400 tracking-tighter italic tabular-nums">
+                            {trade.entryPrice?.toFixed(trade.symbol?.includes("JPY") ? 3 : 5) || "0.00000"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-4 bg-white/[0.01] rounded-2xl group/item hover:bg-white/[0.03] transition-all">
+                      <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] block mb-2 italic">Stop_Anchor</label>
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          step="0.00001"
+                          value={editForm.stopLoss || ""}
+                          onChange={(e) => setEditForm({...editForm, stopLoss: parseFloat(e.target.value)})}
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-rose-400 font-mono text-sm focus:border-rose-500/50 outline-none transition-all"
+                        />
+                      ) : (
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-xl font-black text-rose-500/40 tracking-tighter italic tabular-nums">
+                            {trade.stopLoss?.toFixed(trade.symbol?.includes("JPY") ? 3 : 5) || "---"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Exit Hub */}
+                  <div className="space-y-4">
+                    <div className="p-4 bg-white/[0.01] rounded-2xl group/item hover:bg-white/[0.03] transition-all">
+                      <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] block mb-2 italic">Exit_Termination</label>
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          step="0.00001"
+                          value={editForm.exitPrice || ""}
+                          onChange={(e) => setEditForm({...editForm, exitPrice: parseFloat(e.target.value)})}
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-purple-400 font-mono text-sm focus:border-purple-500/50 outline-none transition-all"
+                        />
+                      ) : (
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-black text-purple-400 tracking-tighter italic tabular-nums">
+                            {trade.exitPrice?.toFixed(trade.symbol?.includes("JPY") ? 3 : 5) || "OPEN"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-4 bg-white/[0.01] rounded-2xl group/item hover:bg-white/[0.03] transition-all">
+                      <label className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] block mb-2 italic">Profit_Objective</label>
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          step="0.00001"
+                          value={editForm.takeProfit || ""}
+                          onChange={(e) => setEditForm({...editForm, takeProfit: parseFloat(e.target.value)})}
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-emerald-400 font-mono text-sm focus:border-emerald-500/50 outline-none transition-all"
+                        />
+                      ) : (
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-xl font-black text-emerald-500/40 tracking-tighter italic tabular-nums">
+                            {trade.takeProfit?.toFixed(trade.symbol?.includes("JPY") ? 3 : 5) || "---"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Volume Hub */}
+                  <div className="space-y-4">
+                    <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl group/item hover:bg-white/[0.05] transition-all">
+                      <label className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] block mb-2">Quantitative_Load</label>
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          value={editForm.quantity || ""}
+                          onChange={(e) => setEditForm({...editForm, quantity: parseFloat(e.target.value)})}
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white font-mono text-sm focus:border-white/30 outline-none transition-all"
+                        />
+                      ) : (
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-black text-white/90 tracking-tighter font-mono">
+                            {trade.quantity?.toLocaleString() || "0"}
+                          </span>
+                          <span className="text-[10px] font-black text-white/20 uppercase">Units</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl group/item hover:bg-white/[0.05] transition-all">
+                      <label className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] block mb-2">Operational_Leverage</label>
+                      {isEditing ? (
+                        <select
+                          value={editForm.leverage || "1:1"}
+                          onChange={(e) => setEditForm({ ...editForm, leverage: e.target.value })}
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white font-mono text-sm outline-none cursor-pointer"
+                        >
+                          {["1:1", "1:10", "1:20", "1:30", "1:50", "1:100", "1:200", "1:500"].map(l => (
+                            <option key={l} value={l} className="bg-[#0A0A0A]">{l}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-xl font-black text-white/60 tracking-tighter font-mono">{trade.leverage || "1:1"}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Metadata Hub */}
+                  <div className="space-y-4">
+                    <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl group/item hover:bg-white/[0.05] transition-all">
+                      <label className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] block mb-2">Account_Exposure</label>
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editForm.accountRisk || ""}
+                          onChange={(e) => setEditForm({...editForm, accountRisk: parseFloat(e.target.value)})}
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-amber-400 font-mono text-sm focus:border-amber-500/50 outline-none transition-all"
+                        />
+                      ) : (
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-black text-amber-400 tracking-tighter font-mono">{trade.accountRisk?.toFixed(2) || "0.00"}</span>
+                          <span className="text-[10px] font-black text-amber-400/40">%</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl group/item hover:bg-white/[0.05] transition-all">
+                      <label className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em] block mb-2">Protocol_Fees</label>
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editForm.fees || ""}
+                          onChange={(e) => setEditForm({...editForm, fees: parseFloat(e.target.value)})}
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-white/60 font-mono text-sm focus:border-white/30 outline-none transition-all"
+                        />
+                      ) : (
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-xl font-black text-white/40 tracking-tighter font-mono">${trade.fees?.toFixed(2) || "0.00"}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
-                    Quantity
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      value={editForm.quantity || ""}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          quantity: parseFloat(e.target.value),
-                        })
-                      }
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-sky-500/50 outline-none"
-                    />
-                  ) : (
-                    <p className="text-lg font-bold text-white">
-                      {trade.quantity || "-"}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
-                    Stop Loss
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      step="0.00001"
-                      value={editForm.stopLoss || ""}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          stopLoss: parseFloat(e.target.value),
-                        })
-                      }
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-sky-500/50 outline-none"
-                    />
-                  ) : (
-                    <p className="text-lg font-bold text-white">
-                      {trade.stopLoss?.toFixed(5) || "-"}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
-                    Take Profit
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      step="0.00001"
-                      value={editForm.takeProfit || ""}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          takeProfit: parseFloat(e.target.value),
-                        })
-                      }
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-sky-500/50 outline-none"
-                    />
-                  ) : (
-                    <p className="text-lg font-bold text-white">
-                      {trade.takeProfit?.toFixed(5) || "-"}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
-                    Fees
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editForm.fees || ""}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          fees: parseFloat(e.target.value),
-                        })
-                      }
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-sky-500/50 outline-none"
-                    />
-                  ) : (
-                    <p className="text-lg font-bold text-white">
-                      ${trade.fees?.toFixed(2) || "0.00"}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
-                    Leverage
-                  </label>
-                  {isEditing ? (
-                    <select
-                      value={editForm.leverage || "1:1"}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          leverage: e.target.value,
-                        })
-                      }
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-sky-500/50 outline-none"
-                    >
-                      <option value="1:1">1:1</option>
-                      <option value="1:10">1:10</option>
-                      <option value="1:20">1:20</option>
-                      <option value="1:30">1:30</option>
-                      <option value="1:50">1:50</option>
-                      <option value="1:100">1:100</option>
-                      <option value="1:200">1:200</option>
-                      <option value="1:400">1:400</option>
-                      <option value="1:500">1:500</option>
-                      <option value="1:1000">1:1000</option>
-                    </select>
-                  ) : (
-                    <p className="text-lg font-bold text-white">
-                      {trade.leverage || "1:1"}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
-                    Direction
-                  </label>
-                  {isEditing ? (
-                    <select
-                      value={editForm.direction || "long"}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          direction: e.target.value,
-                        })
-                      }
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-sky-500/50 outline-none"
-                    >
-                      <option value="long">Long</option>
-                      <option value="short">Short</option>
-                    </select>
-                  ) : (
-                    <p className="text-lg font-bold text-white capitalize">
-                      {trade.direction || "-"}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
-                    Asset Type
-                  </label>
-                  {isEditing ? (
-                    <select
-                      value={editForm.assetType || "forex"}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          assetType: e.target.value,
-                        })
-                      }
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-sky-500/50 outline-none"
-                    >
-                      <option value="forex">Foreign Exchange (Forex)</option>
-                      <option value="stock">Stock</option>
-                      <option value="crypto">Cryptocurrency</option>
-                      <option value="cfd">CFD</option>
-                      <option value="futures">Futures</option>
-                      <option value="indices">Indices</option>
-                    </select>
-                  ) : (
-                    <p className="text-lg font-bold text-white capitalize">
-                      {trade.assetType || "-"}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
-                    Symbol
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      value={editForm.symbol || ""}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          symbol: e.target.value,
-                        })
-                      }
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-sky-500/50 outline-none"
-                    />
-                  ) : (
-                    <p className="text-lg font-bold text-white">
-                      {trade.symbol || "-"}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
-                    Portfolio Balance
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editForm.portfolioBalance || ""}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          portfolioBalance: parseFloat(e.target.value),
-                        })
-                      }
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-sky-500/50 outline-none"
-                    />
-                  ) : (
-                    <p className="text-lg font-bold text-white">
-                      ${trade.portfolioBalance?.toFixed(2) || "0.00"}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
-                    Setup Grade
-                  </label>
-                  {isEditing ? (
-                    <select
-                      value={editForm.setupGrade || 3}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          setupGrade: parseInt(e.target.value),
-                        })
-                      }
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-sky-500/50 outline-none"
-                    >
-                      <option value={1}>1 - Poor</option>
-                      <option value={2}>2 - Below Average</option>
-                      <option value={3}>3 - Average</option>
-                      <option value={4}>4 - Good</option>
-                      <option value={5}>5 - Excellent</option>
-                    </select>
-                  ) : (
-                    <p className="text-lg font-bold text-white">
-                      {trade.setupGrade || 3}/5
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
-                    Emotion
-                  </label>
-                  {isEditing ? (
-                    <select
-                      value={editForm.emotion || "neutral"}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          emotion: e.target.value,
-                        })
-                      }
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-sky-500/50 outline-none"
-                    >
-                      {EMOTIONS.map((emotion) => (
-                        <option key={emotion.value} value={emotion.value}>
-                          {emotion.emoji} {emotion.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <p className="text-lg font-bold text-white capitalize">
-                      {EMOTIONS.find((e) => e.value === trade.emotion)?.emoji}{" "}
-                      {trade.emotion || "neutral"}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
-                    Outcome
-                  </label>
-                  {isEditing ? (
-                    <select
-                      value={editForm.outcome || ""}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          outcome: e.target.value,
-                        })
-                      }
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-sky-500/50 outline-none"
-                    >
-                      <option value="">Select outcome</option>
-                      <option value="win">Win</option>
-                      <option value="loss">Loss</option>
-                      <option value="breakeven">Breakeven</option>
-                      <option value="stopped-out">Stopped Out</option>
-                      <option value="target-hit">Target Hit</option>
-                    </select>
-                  ) : (
-                    <p className="text-lg font-bold text-white capitalize">
-                      {trade.outcome || "-"}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
-                    Entry Time
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="datetime-local"
-                      value={
-                        editForm.timestampEntry
-                          ? new Date(editForm.timestampEntry)
-                              .toISOString()
-                              .slice(0, 16)
-                          : ""
-                      }
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          timestampEntry: e.target.value,
-                        })
-                      }
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-sky-500/50 outline-none text-sm"
-                    />
-                  ) : (
-                    <p className="text-sm font-mono text-white">
-                      {new Date(trade.timestampEntry).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
-                    Exit Time
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="datetime-local"
-                      value={
-                        editForm.timestampExit
-                          ? new Date(editForm.timestampExit)
-                              .toISOString()
-                              .slice(0, 16)
-                          : ""
-                      }
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          timestampExit: e.target.value,
-                        })
-                      }
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-sky-500/50 outline-none text-sm"
-                    />
-                  ) : (
-                    <p className="text-sm font-mono text-white">
-                      {trade.timestampExit
-                        ? new Date(trade.timestampExit).toLocaleString()
-                        : "Open"}
-                    </p>
-                  )}
-                </div>
+                  <div className="mt-8 pt-8 border-t border-white/5 grid grid-cols-2 md:grid-cols-4 gap-6">
+                     <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-white/50 uppercase tracking-widest block">Asset Class</label>
+                          {isEditing ? (
+                            <select 
+                              value={editForm.assetType || "forex"}
+                              onChange={(e) => setEditForm({...editForm, assetType: e.target.value})}
+                              className="bg-transparent border-none text-white font-bold uppercase text-xs outline-none p-0"
+                            >
+                              <option value="forex">Forex</option>
+                              <option value="crypto">Crypto</option>
+                              <option value="stocks">Stocks</option>
+                            </select>
+                          ) : (
+                            <p className="text-sm font-bold text-white uppercase tracking-wider">{trade.assetType || "Forex"}</p>
+                          )}
+                     </div>
+                     <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-white/50 uppercase tracking-widest block">Direction</label>
+                          {isEditing ? (
+                            <select 
+                              value={editForm.direction || "long"}
+                              onChange={(e) => setEditForm({...editForm, direction: e.target.value})}
+                              className="bg-transparent border-none text-white font-bold uppercase text-xs outline-none p-0"
+                            >
+                              <option value="long">Long</option>
+                              <option value="short">Short</option>
+                            </select>
+                          ) : (
+                            <div className={`text-sm font-bold uppercase tracking-wider flex items-center gap-2 ${trade.direction === 'long' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {trade.direction === 'long' ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                              {trade.direction}
+                            </div>
+                          )}
+                     </div>
+                     <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-white/50 uppercase tracking-widest block">Entry Time</label>
+                          <p className="text-sm font-mono text-white/80">{new Date(trade.timestampEntry).toLocaleString()}</p>
+                     </div>
+                     <div className="space-y-1 text-right">
+                          <label className="text-[10px] font-bold text-white/50 uppercase tracking-widest block">Outcome</label>
+                          <div className={`text-sm font-bold uppercase tracking-wider ${trade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                             {trade.pnl >= 0 ? "Profit" : "Loss"}
+                          </div>
+                     </div>
+                  </div>
               </div>
             </div>
 
-            {/* Notes & Analysis */}
-            <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-8">
-              <h3 className="text-xl font-bold mb-6">Trade Notes & Analysis</h3>
-
-              {isEditing ? (
-                <textarea
-                  value={editForm.notes || ""}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, notes: e.target.value })
-                  }
-                  rows={8}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white focus:border-sky-500/50 outline-none resize-none"
-                  placeholder="Describe your thought process, market conditions, and lessons learned..."
-                />
-              ) : (
-                <div className="bg-white/5 border border-white/10 rounded-lg p-4 min-h-[200px]">
-                  <p className="text-white/90 whitespace-pre-wrap leading-relaxed">
-                    {trade.notes || "No notes available"}
-                  </p>
-                </div>
-              )}
+            {/* Trade Notes */}
+            <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl overflow-hidden relative group">
+              <div className="p-8">
+                 <h3 className="text-xl font-bold text-white flex items-center gap-3 mb-6">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full" />
+                    Trade Notes
+                 </h3>
+                 
+                 {isEditing ? (
+                    <div className="relative">
+                      <textarea
+                        value={editForm.notes || ""}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, notes: e.target.value })
+                        }
+                        rows={10}
+                        className="w-full bg-[#050505] border border-white/10 rounded-xl px-6 py-5 text-white/90 font-mono text-sm leading-relaxed focus:border-emerald-500/50 outline-none resize-none placeholder:text-white/40 max-h-[400px] overflow-y-auto"
+                        placeholder="Write your trade notes here..."
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-[#050505] border border-white/10 rounded-xl p-6 h-[300px] relative overflow-hidden flex flex-col">
+                       <div className="relative z-10 prose prose-invert max-w-none prose-sm overflow-y-auto pr-2 custom-scrollbar">
+                          {trade.notes ? (
+                             <div className="whitespace-pre-wrap font-sans text-white/90 leading-relaxed">
+                               {trade.notes}
+                             </div>
+                          ) : (
+                             <div className="flex items-center justify-center h-40 text-white/40 text-sm tracking-wider uppercase">
+                                No notes recorded
+                             </div>
+                          )}
+                       </div>
+                    </div>
+                  )}
+              </div>
             </div>
 
-            {/* Comprehensive Trade Data */}
-            <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-8">
-              <h3 className="text-xl font-bold mb-6">
-                Complete Trade Analysis
-              </h3>
+            {/* Trade Analysis */}
+            <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl overflow-hidden relative group">
+              <div className="relative p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full" />
+                      Trade Analysis
+                    </h3>
+                    <p className="text-xs font-medium text-white/50 uppercase tracking-wider">Detailed Market & Risk Analysis</p>
+                  </div>
+                </div>
 
               {/* Market Analysis */}
               <div className="space-y-6 mb-8">
                 <h4 className="text-lg font-semibold text-sky-400">
-                  Market Analysis
+                  Market Context
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -1763,7 +1510,7 @@ export default function TradeDetailPage() {
                     )}
                   </div>
                   <div>
-                    <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
+                    <label className="text-xs text-white/80 uppercase tracking-wider block mb-2 font-bold">
                       Trading Sessions
                     </label>
                     {isEditing ? (
@@ -1780,30 +1527,31 @@ export default function TradeDetailPage() {
                         }
                         rows={3}
                         className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:border-sky-500/50 outline-none resize-none text-sm"
-                        placeholder="Enter sessions separated by commas (e.g., London, New York, Asian)"
+                        placeholder="London, New York, Asian..."
                       />
                     ) : (
                       <div className="flex flex-wrap gap-2">
-                        {(trade.sessions || []).map(
-                          (session: string, i: number) => (
-                            <span
-                              key={i}
-                              className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full"
-                            >
-                              {session}
-                            </span>
+                        {(trade.sessions || []).length > 0 ? (
+                          (trade.sessions || []).map(
+                            (session: string, i: number) => (
+                              <span
+                                key={i}
+                                className="px-3 py-1.5 bg-green-500/10 border border-green-500/20 text-green-300 text-xs font-bold rounded-lg uppercase tracking-wider"
+                              >
+                                {session}
+                              </span>
+                            )
                           )
-                        )}
-                        {(!trade.sessions || trade.sessions.length === 0) && (
-                          <span className="text-white/60 text-sm italic">
-                            None specified
+                        ) : (
+                          <span className="text-white/40 text-sm italic">
+                            No sessions recorded
                           </span>
                         )}
                       </div>
                     )}
                   </div>
                   <div>
-                    <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
+                    <label className="text-xs text-white/80 uppercase tracking-wider block mb-2 font-bold">
                       Entry Signals
                     </label>
                     {isEditing ? (
@@ -2050,6 +1798,7 @@ export default function TradeDetailPage() {
                     )}
                   </div>
                 </div>
+              </div>
 
                 {/* Note to Self */}
                 <div className="mt-6">
@@ -2215,484 +1964,326 @@ export default function TradeDetailPage() {
                     )
                   )}
                 </div>
+              </div>
+            </div>
 
-                {/* Screenshots */}
-                <div className="mt-6">
-                  <label className="text-xs text-white/60 uppercase tracking-wider block mb-2">
-                    Screenshots
-                  </label>
-
+              {/* Trade Screenshots */}
+            <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl overflow-hidden relative group">
+              <div className="absolute inset-0 bg-blue-500/[0.02] -z-10 group-hover:opacity-100 transition-opacity opacity-0" />
+              
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="space-y-1">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                      <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
+                      Trade Screenshots
+                    </h3>
+                    <p className="text-xs font-medium text-white/50 uppercase tracking-wider">Chart Analysis & Execution</p>
+                  </div>
                   {isEditing && (
-                    <div className="mb-4">
-                      <label className="flex items-center justify-center w-full h-32 border-2 border-dashed border-white/20 rounded-lg cursor-pointer hover:border-white/40 transition-colors">
-                        <div className="text-center">
-                          <Upload
-                            size={24}
-                            className="mx-auto mb-2 text-white/60"
+                    <label className="cursor-pointer group/upload">
+                       <div className="px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center gap-2 group-hover/upload:bg-blue-500/20 transition-all">
+                          <Upload size={14} className="text-blue-400" />
+                          <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">Upload Image</span>
+                       </div>
+                       <input type="file" multiple accept="image/*" onChange={handleImageUpload} className="hidden" />
+                    </label>
+                  )}
+                </div>
+
+                <div className="space-y-6">
+                  {((editForm.screenshots || trade.screenshots) || []).length === 0 ? (
+                    <div className="aspect-[21/9] rounded-3xl border border-dashed border-white/10 flex flex-col items-center justify-center bg-white/[0.01]">
+                        <ImageIcon size={48} className="text-white/10 mb-4" />
+                        <p className="text-xs font-bold text-white/40 uppercase tracking-wider">No Screenshots Added</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {(editForm.screenshots || trade.screenshots).map((screenshot: string, i: number) => (
+                        <div key={i} className="relative group/card aspect-video rounded-2xl overflow-hidden border border-white/10 hover:border-blue-500/50 transition-all shadow-2xl">
+                           <img
+                            src={screenshot}
+                            alt={`Screenshot ${i + 1}`}
+                            className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-700 cursor-pointer"
+                            onClick={() => window.open(screenshot, "_blank")}
                           />
-                          <p className="text-sm text-white/60">
-                            {uploading
-                              ? "Uploading..."
-                              : "Click to upload images"}
-                          </p>
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity flex flex-col justify-end p-4">
+                             <p className="text-[10px] font-bold text-white/60 uppercase tracking-wider mb-1">Image {i + 1}</p>
+                          </div>
+                          {isEditing && (
+                            <button
+                              onClick={() => removeScreenshot(i)}
+                              className="absolute top-4 right-4 w-8 h-8 bg-red-500/80 hover:bg-red-500 text-white rounded-xl flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-all shadow-xl backdrop-blur-md"
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
                         </div>
-                        <input
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          className="hidden"
-                          disabled={uploading}
-                        />
-                      </label>
+                      ))}
                     </div>
                   )}
-
-                  {(editForm.screenshots || trade.screenshots) &&
-                    (editForm.screenshots || trade.screenshots).length > 0 && (
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {(editForm.screenshots || trade.screenshots).map(
-                          (screenshot: string, i: number) => (
-                            <div key={i} className="relative group">
-                              <img
-                                src={screenshot}
-                                alt={`Screenshot ${i + 1}`}
-                                className="w-full h-32 object-cover rounded-lg border border-white/10 hover:border-white/30 transition-colors cursor-pointer"
-                                onClick={() =>
-                                  window.open(screenshot, "_blank")
-                                }
-                              />
-                              {isEditing && (
-                                <button
-                                  onClick={() => removeScreenshot(i)}
-                                  className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  <X size={12} />
-                                </button>
-                              )}
-                            </div>
-                          )
-                        )}
-                      </div>
-                    )}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Sidebar */}
+          {/* Sidebar Info */}
           <div className="space-y-6">
-            {/* Emotion Tracking */}
-            <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6">
-              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <Heart size={18} className="text-red-500" />
-                Emotional State
-              </h3>
+            {/* Psychology */}
+            <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 relative group overflow-hidden">
+               <div className="absolute inset-0 bg-blue-500/[0.02] -z-10 group-hover:opacity-100 transition-opacity opacity-0" />
+               <h3 className="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-4 flex items-center gap-2">
+                 <div className="w-1 h-1 bg-red-500 rounded-full" />
+                 Psychology
+               </h3>
 
               {isEditing ? (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   {EMOTIONS.map((emotion) => (
                     <button
                       key={emotion.value}
-                      onClick={() =>
-                        setEditForm((prev: any) => ({
-                          ...prev,
-                          emotion: emotion.value,
-                        }))
-                      }
-                      className={`p-3 rounded-lg border transition-colors text-center min-h-[70px] flex flex-col items-center justify-center ${
+                      onClick={() => setEditForm((prev: any) => ({ ...prev, emotion: emotion.value }))}
+                      className={`p-3 rounded-xl border transition-all text-center flex flex-col items-center justify-center gap-1 ${
                         editForm.emotion === emotion.value
-                          ? "bg-sky-500/20 border-sky-500/50 text-sky-400"
-                          : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
+                          ? "bg-blue-500/20 border-blue-500/50 text-blue-400"
+                          : "bg-white/[0.02] border-white/5 text-white/40 hover:bg-white/[0.05]"
                       }`}
                     >
-                      <div className="text-lg mb-1">{emotion.emoji}</div>
-                      <div className="text-[10px] font-medium uppercase tracking-wide leading-tight text-center break-words max-w-full">
-                        {emotion.label}
-                      </div>
+                      <span className="text-xl">{emotion.emoji}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider">{emotion.label}</span>
                     </button>
                   ))}
                 </div>
               ) : (
-                <div className="text-center">
-                  {trade.emotion ? (
-                    <div className="inline-flex items-center gap-3 bg-white/5 rounded-lg p-4">
-                      <span className="text-3xl">
-                        {EMOTIONS.find((e) => e.value === trade.emotion)
-                          ?.emoji || "😐"}
-                      </span>
-                      <span className="text-lg font-medium capitalize">
-                        {trade.emotion}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="text-white/60 italic">
-                      No emotion recorded
-                    </div>
-                  )}
+                <div className="flex items-center gap-4 bg-white/[0.03] border border-white/5 rounded-2xl p-4">
+                  <div className="w-16 h-16 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-center text-3xl shadow-inner">
+                    {EMOTIONS.find((e) => e.value === trade.emotion)?.emoji || "😐"}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">Sentiment</p>
+                    <p className="text-xl font-bold uppercase tracking-tight text-white/90">
+                      {trade.emotion || "Neutral"}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Setup Grade */}
-            <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6">
-              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <Star size={18} className="text-yellow-500" />
-                Setup Grade
-              </h3>
+            {/* Setup Quality */}
+            <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-6 relative group overflow-hidden">
+               <div className="absolute inset-0 bg-amber-500/[0.02] -z-10 group-hover:opacity-100 transition-opacity opacity-0" />
+               <h3 className="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-4 flex items-center gap-2">
+                 <div className="w-1 h-1 bg-amber-500 rounded-full" />
+                 Setup Quality
+               </h3>
 
               {isEditing ? (
-                <div className="flex gap-2">
+                <div className="flex justify-between gap-1">
                   {[1, 2, 3, 4, 5].map((grade) => (
                     <button
                       key={grade}
-                      onClick={() =>
-                        setEditForm((prev: any) => ({ ...prev, setupGrade: grade }))
-                      }
-                      className={`w-12 h-12 rounded-lg border transition-colors ${
+                      onClick={() => setEditForm((prev: any) => ({ ...prev, setupGrade: grade }))}
+                      className={`flex-1 aspect-square rounded-xl border transition-all flex items-center justify-center font-bold text-xs ${
                         editForm.setupGrade === grade
-                          ? "bg-yellow-500/20 border-yellow-500/50 text-yellow-400"
-                          : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
+                          ? "bg-amber-500/20 border-amber-500/50 text-amber-400"
+                          : "bg-white/[0.02] border-white/5 text-white/40 hover:bg-white/[0.05]"
                       }`}
                     >
-                      {grade === 5
-                        ? "A+"
-                        : grade === 4
-                        ? "A"
-                        : grade === 3
-                        ? "B"
-                        : grade === 2
-                        ? "C"
-                        : "D"}
+                      {grade === 5 ? "A+" : grade === 4 ? "A" : grade === 3 ? "B" : grade === 2 ? "C" : "D"}
                     </button>
                   ))}
                 </div>
               ) : (
-                <div className="text-center">
-                  <div
-                    className={`inline-flex items-center justify-center w-16 h-16 rounded-full text-2xl font-bold ${
-                      (trade.setupGrade || 0) >= 4
-                        ? "bg-green-500/20 text-green-400"
-                        : (trade.setupGrade || 0) >= 3
-                        ? "bg-yellow-500/20 text-yellow-400"
-                        : "bg-red-500/20 text-red-400"
-                    }`}
-                  >
-                    {trade.setupGrade === 5
-                      ? "A+"
-                      : trade.setupGrade === 4
-                      ? "A"
-                      : trade.setupGrade === 3
-                      ? "B"
-                      : trade.setupGrade === 2
-                      ? "C"
-                      : trade.setupGrade === 1
-                      ? "D"
-                      : "-"}
+                <div className="flex items-center justify-between bg-white/[0.03] border border-white/5 rounded-2xl p-4">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">Grade</p>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-black italic text-amber-500 tracking-tighter">
+                        {trade.setupGrade === 5 ? "A+" : trade.setupGrade === 4 ? "A" : trade.setupGrade === 3 ? "B" : trade.setupGrade === 2 ? "C" : trade.setupGrade === 1 ? "D" : "N/A"}
+                      </span>
+                      <span className="text-[10px] font-bold text-white/40 uppercase">Quality</span>
+                    </div>
+                  </div>
+                  <div className="w-12 h-12 rounded-full border-4 border-amber-500/20 border-t-amber-500 flex items-center justify-center">
+                     <Star size={14} className="text-amber-500" />
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Strategy Info */}
-            {trade.strategy && (
-              <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6">
-                <h3 className="text-lg font-bold mb-4">Strategy Used</h3>
-                <div className="flex items-center gap-3 bg-sky-500/10 border border-sky-500/20 rounded-lg p-4">
-                  <div className="w-3 h-3 bg-sky-500 rounded-full"></div>
-                  <div>
-                    <div className="font-medium text-sky-400">
-                      {trade.strategy.name}
-                    </div>
-                    <div className="text-xs text-white/60">
-                      {trade.strategy.isTemplate ? "Blueprint" : "System"}
+            {/* Key Metrics */}
+            <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-6">
+              <h3 className="text-[10px] font-bold uppercase tracking-widest text-white/50 mb-6">Key Metrics</h3>
+              
+              <div className="space-y-4">
+                {trade.strategy && (
+                  <div className="p-4 bg-sky-500/5 border border-sky-500/10 rounded-2xl">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-sky-500/20 flex items-center justify-center text-sky-400">
+                        <Target size={16} />
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="text-[9px] font-bold text-sky-400/50 uppercase tracking-widest">Active Strategy</p>
+                        <p className="text-sm font-bold text-sky-400 uppercase tracking-tight">{trade.strategy.name}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
+                )}
 
-            {/* Quick Stats */}
-            <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6">
-              <h3 className="text-lg font-bold mb-4">Quick Stats</h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-white/60">Commission</span>
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editForm.fees || ""}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          fees: parseFloat(e.target.value),
-                        })
-                      }
-                      className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-white text-xs focus:border-sky-500/50 outline-none"
-                    />
-                  ) : (
-                    <span className="font-mono">
-                      ${trade.fees?.toFixed(2) || "0.00"}
-                    </span>
-                  )}
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-white/60">Gross Yield</span>
-                  <span
-                    className={`font-mono ${
-                      getDisplayValue(
-                        trade.grossPnl,
-                        calculatedMetrics?.grossPnl
-                      ) >= 0
-                        ? "text-green-400"
-                        : "text-red-400"
-                    }`}
-                  >
-                    {getDisplayValue(
-                      trade.grossPnl,
-                      calculatedMetrics?.grossPnl
-                    ) >= 0
-                      ? "+"
-                      : ""}
-                    $
-                    {getDisplayValue(
-                      trade.grossPnl,
-                      calculatedMetrics?.grossPnl
-                    ).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-white/60">Net Realized Profit</span>
-                  <span
-                    className={`font-mono font-bold ${
-                      getDisplayValue(trade.pnl, calculatedMetrics?.netPnl) >= 0
-                        ? "text-green-400"
-                        : "text-red-400"
-                    }`}
-                  >
-                    {getDisplayValue(trade.pnl, calculatedMetrics?.netPnl) >= 0
-                      ? "+"
-                      : ""}
-                    $
-                    {getDisplayValue(
-                      trade.pnl,
-                      calculatedMetrics?.netPnl
-                    ).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-white/60">Risk Amount</span>
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editForm.riskAmount || ""}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          riskAmount: parseFloat(e.target.value),
-                        })
-                      }
-                      className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-white text-xs focus:border-sky-500/50 outline-none"
-                    />
-                  ) : (
-                    <span className="font-mono">
-                      ${trade.riskAmount?.toFixed(2) || "0.00"}
-                    </span>
-                  )}
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-white/60">Risk % of Account</span>
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editForm.accountRisk || ""}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          accountRisk: parseFloat(e.target.value),
-                        })
-                      }
-                      className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-amber-400 text-xs focus:border-sky-500/50 outline-none"
-                    />
-                  ) : (
-                    <span className="font-mono text-amber-400">
-                      {trade.accountRisk?.toFixed(2) || "0.00"}%
-                    </span>
-                  )}
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-white/60">Portfolio Balance</span>
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editForm.portfolioBalance || ""}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          portfolioBalance: parseFloat(e.target.value),
-                        })
-                      }
-                      className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-green-400 text-xs focus:border-sky-500/50 outline-none"
-                    />
-                  ) : (
-                    <span className="font-mono text-green-400">
-                      ${trade.portfolioBalance?.toFixed(2) || "0.00"}
-                    </span>
-                  )}
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-white/60">Position Value</span>
-                  <span className="font-mono">
-                    $
-                    {((trade.entryPrice || 0) * (trade.quantity || 0)).toFixed(
-                      2
-                    )}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-white/60">Risk-Reward Ratio</span>
-                  <span className="font-mono text-sky-400">
-                    ≈ {trade.targetRR?.toFixed(1) || "0.0"} : 1
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-white/60">Actual R:R</span>
-                  {isEditing ? (
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editForm.actualRR || editForm.rMultiple || ""}
-                      onChange={(e) =>
-                        setEditForm({
-                          ...editForm,
-                          actualRR: parseFloat(e.target.value),
-                          rMultiple: parseFloat(e.target.value),
-                        })
-                      }
-                      className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-purple-400 text-xs focus:border-sky-500/50 outline-none"
-                    />
-                  ) : (
-                    <span className="font-mono text-purple-400">
-                      {trade.actualRR?.toFixed(2) ||
-                        trade.rMultiple?.toFixed(2) ||
-                        "0.00"}
-                      R
-                    </span>
-                  )}
-                </div>
-                <div className="border-t border-white/10 pt-3 mt-4">
-                  <div className="flex justify-between">
-                    <span className="text-white/60">Entry Time</span>
-                    <span className="font-mono text-xs">
-                      {new Date(trade.timestampEntry).toLocaleTimeString()}
+                <div className="space-y-3 pt-2">
+                  <div className="flex justify-between items-center px-2">
+                    <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest">Gross Profit</span>
+                    <span className={`font-mono text-xs font-bold ${getDisplayValue(trade.grossPnl, calculatedMetrics?.grossPnl) >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                      {getDisplayValue(trade.grossPnl, calculatedMetrics?.grossPnl) >= 0 ? "+" : ""}${getDisplayValue(trade.grossPnl, calculatedMetrics?.grossPnl).toFixed(2)}
                     </span>
                   </div>
-                  {trade.timestampExit && (
-                    <div className="flex justify-between mt-2">
-                      <span className="text-white/60">Exit Time</span>
-                      <span className="font-mono text-xs">
-                        {new Date(trade.timestampExit).toLocaleTimeString()}
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex justify-between items-center px-2">
+                    <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest">Risk Amount</span>
+                    <span className="font-mono text-xs font-bold text-amber-500">${trade.riskAmount?.toFixed(2) || "0.00"}</span>
+                  </div>
+                  <div className="flex justify-between items-center px-2">
+                    <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest">Risk Reward</span>
+                    <span className="font-mono text-xs font-bold text-purple-400">
+                       {getDisplayValue(trade.rMultiple, calculatedMetrics?.rMultiple).toFixed(2)}R
+                    </span>
+                  </div>
+                  <div className="h-px bg-white/5 my-2" />
+                  <div className="flex justify-between items-center px-2">
+                    <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest italic">Net Profit</span>
+                    <span className={`text-lg font-black italic tracking-tighter ${getDisplayValue(trade.pnl, calculatedMetrics?.netPnl) >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                      {getDisplayValue(trade.pnl, calculatedMetrics?.netPnl) >= 0 ? "+" : ""}${getDisplayValue(trade.pnl, calculatedMetrics?.netPnl).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-6 border-t border-white/5 space-y-4">
+                   <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest">Time</p>
+                        <p className="text-[10px] font-mono text-white/60">{new Date(trade.timestampEntry).toLocaleTimeString()}</p>
+                      </div>
+                      <div className="text-right space-y-0.5">
+                        <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest">Status</p>
+                        <div className="flex items-center gap-1.5 justify-end">
+                          <div className={`w-1 h-1 rounded-full ${trade.status === 'Open' ? 'bg-blue-500 animate-pulse' : 'bg-white/20'}`} />
+                          <p className="text-[10px] font-bold text-white/80 uppercase">{trade.status || 'Archived'}</p>
+                        </div>
+                      </div>
+                   </div>
                 </div>
               </div>
             </div>
-          </div>
         </div>
       </div>
+    </div>
 
       {/* Share Modal */}
-      {showShareModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0A0A0A] border border-white/10 rounded-xl w-full max-w-md">
-            <div className="flex items-center justify-between p-6 border-b border-white/10">
-              <h3 className="text-xl font-bold text-white">Share Trade</h3>
-              <button
-                onClick={() => setShowShareModal(false)}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-              >
-                <X size={20} className="text-white/60" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <button
-                onClick={generatePDF}
-                className="w-full flex items-center gap-3 p-4 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg text-red-400 transition-colors"
-              >
-                <Download size={20} />
-                <div className="text-left">
-                  <div className="font-medium">Download PDF</div>
-                  <div className="text-sm opacity-80">
-                    Complete trade analysis report
-                  </div>
+      <AnimatePresence>
+        {showShareModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-[#0A0A0A] border border-white/10 rounded-3xl w-full max-w-md overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)]"
+            >
+              <div className="flex items-center justify-between p-8 border-b border-white/5">
+                <div className="space-y-1">
+                  <h3 className="text-xl font-bold uppercase tracking-tight text-white">Share Trade</h3>
+                  <p className="text-xs font-medium text-white/50 uppercase tracking-wider">Select sharing method</p>
                 </div>
-              </button>
-
-              <button
-                onClick={generateTradeCard}
-                className="w-full flex items-center gap-3 p-4 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded-lg text-purple-400 transition-colors"
-              >
-                <ImageIcon size={20} />
-                <div className="text-left">
-                  <div className="font-medium">Generate Trade Card</div>
-                  <div className="text-sm opacity-80">
-                    Shareable social media card
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={copyTradeLink}
-                className="w-full flex items-center gap-3 p-4 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-lg text-blue-400 transition-colors"
-              >
-                <Copy size={20} />
-                <div className="text-left">
-                  <div className="font-medium">Copy Link</div>
-                  <div className="text-sm opacity-80">Share trade URL</div>
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Dialog */}
-      {showDeleteDialog && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0A0A0A] border border-red-500/20 rounded-xl w-full max-w-md p-6">
-            <div className="text-center">
-              <AlertTriangle size={48} className="text-red-500 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-white mb-2">
-                Delete Trade
-              </h3>
-              <p className="text-white/70 mb-6">
-                Are you sure you want to delete this trade? This action cannot
-                be undone.
-              </p>
-              <div className="flex gap-3">
                 <button
-                  onClick={() => setShowDeleteDialog(false)}
-                  className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
+                  onClick={() => setShowShareModal(false)}
+                  className="p-3 hover:bg-white/5 rounded-2xl transition-all text-white/40 hover:text-white"
                 >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg text-white transition-colors"
-                >
-                  Delete
+                  <X size={20} />
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+
+              <div className="p-8 space-y-4">
+                <button
+                  onClick={copyTradeLink}
+                  className="w-full flex items-center justify-between p-6 bg-white/[0.02] border border-white/5 rounded-2xl hover:bg-white/[0.05] transition-all group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+                      <Copy size={20} />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-bold text-white">Copy Link</p>
+                      <p className="text-[10px] font-medium text-white/40 uppercase tracking-widest">Direct Link to Trade</p>
+                    </div>
+                  </div>
+                  <ChevronDown className="text-white/20 -rotate-90" size={16} />
+                </button>
+
+                <button
+                  onClick={generateTradeCard}
+                  className="w-full flex items-center justify-between p-6 bg-white/[0.02] border border-white/5 rounded-2xl hover:bg-white/[0.05] transition-all group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400">
+                      <ImageIcon size={20} />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-bold text-white">Image Card</p>
+                      <p className="text-[10px] font-medium text-white/40 uppercase tracking-widest">Shareable Image</p>
+                    </div>
+                  </div>
+                  <ChevronDown className="text-white/20 -rotate-90" size={16} />
+                </button>
+
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Terminal */}
+      <AnimatePresence>
+        {showDeleteDialog && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-red-950/20 backdrop-blur-xl z-[100] flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-[#0A0A0A] border border-red-500/20 rounded-[2.5rem] p-10 max-w-sm w-full text-center shadow-[0_0_100px_rgba(239,68,68,0.1)]"
+            >
+              <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-8 border border-red-500/20">
+                <Trash2 size={32} className="text-red-500" />
+              </div>
+              <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white mb-2">Terminate Artifact?</h3>
+              <p className="text-[10px] font-medium text-white/30 uppercase tracking-[0.2em] mb-10 leading-relaxed">
+                Warning: This action will permanently delink the selected trade artifact from the neural registry.
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={handleDelete}
+                  className="w-full py-4 bg-red-500 text-black rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] hover:bg-red-400 transition-all shadow-2xl shadow-red-500/20"
+                >
+                  Confirm Termination
+                </button>
+                <button
+                  onClick={() => setShowDeleteDialog(false)}
+                  className="w-full py-4 bg-white/[0.03] border border-white/10 text-white/40 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] hover:text-white hover:bg-white/5 transition-all"
+                >
+                  Maintain Linkage
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

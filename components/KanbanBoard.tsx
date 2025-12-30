@@ -5,8 +5,11 @@ import {
   Calendar,
   User,
   MoreHorizontal,
-  ArrowRight,
+  CheckCircle,
+  Circle,
   Eye,
+  Edit3,
+  Trash2,
 } from "lucide-react";
 import { ITask } from "@/lib/models/Task";
 import { useState, DragEvent } from "react";
@@ -101,26 +104,27 @@ export default function KanbanBoard({
   };
 
   return (
-    <div className="flex gap-6 h-full overflow-x-auto">
+    <div className="flex gap-10 h-full overflow-x-auto pb-10 custom-scrollbar relative z-10 font-sans">
       {columns.map((column) => (
-        <div key={column.id} className="flex-1 min-w-80">
+        <div key={column.id} className="flex-1 min-w-[350px] flex flex-col group">
           <div
-            className={`${column.color} border border-white/10 p-4 rounded-t-xl`}
+            className={`p-6 rounded-t-[2rem] border-t border-l border-r border-white/5 bg-white/[0.03] flex items-center justify-between group-hover:bg-white/[0.05] transition-all duration-500`}
           >
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-white tracking-tight">
+            <div className="flex items-center gap-3">
+              <div className={`w-1.5 h-1.5 rounded-full ${column.id === 'done' ? 'bg-green-500' : column.id === 'in-progress' ? 'bg-blue-500' : 'bg-white/20'} animate-pulse`} />
+              <h3 className="text-sm font-black text-white uppercase tracking-[0.2em] italic">
                 {column.title}
               </h3>
-              <span className="bg-white/10 text-white px-3 py-1 rounded-full text-sm font-mono">
-                {getTasksByStatus(column.id).length}
-              </span>
             </div>
+            <span className="px-4 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black text-white/40 uppercase tracking-widest">
+              {getTasksByStatus(column.id).length} Nodes
+            </span>
           </div>
 
           <div
-            className={`bg-white/5 border-l border-r border-b border-white/10 p-4 min-h-96 rounded-b-xl transition-colors ${
+            className={`flex-1 bg-white/[0.01] border-l border-r border-b border-white/5 p-5 min-h-[500px] rounded-b-[2rem] transition-all duration-500 ${
               dragOverColumn === column.id
-                ? "bg-blue-500/20 border-blue-500/50"
+                ? "bg-blue-500/[0.03] border-blue-500/30 ring-1 ring-blue-500/10"
                 : ""
             }`}
             onDragOver={handleDragOver}
@@ -128,129 +132,91 @@ export default function KanbanBoard({
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, column.id)}
           >
-            {getTasksByStatus(column.id).map((task) => (
-              <div
-                key={task._id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, task._id!)}
-                onDragEnd={handleDragEnd}
-                className={`bg-[#0A0A0A] border border-white/10 p-4 mb-3 rounded-xl hover:border-white/20 transition-all cursor-move select-none ${
-                  draggedTask === task._id
-                    ? "opacity-50 scale-95 rotate-2"
-                    : "hover:scale-[1.02]"
-                }`}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <h4 className="font-medium text-white flex-1">
-                    {task.title}
-                  </h4>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-3 h-3 rounded-full ${
-                        priorityColors[task.priority]
-                      }`}
-                    />
-                    <div className="relative group">
-                      <button className="text-white/40 hover:text-white/60 transition-colors">
-                        <MoreHorizontal size={16} />
-                      </button>
-                      <div className="absolute right-0 top-6 bg-[#0A0A0A] border border-white/20 rounded-lg shadow-xl p-2 hidden group-hover:block z-10 min-w-40">
-                        <div className="flex flex-col gap-1">
-                          <button
-                            onClick={() =>
-                              router.push(`/details?type=task&id=${task._id}`)
-                            }
-                            className="text-left px-3 py-2 hover:bg-white/10 rounded text-sm flex items-center gap-2 text-white/80 hover:text-white transition-colors"
-                          >
-                            <Eye size={12} />
-                            View Details
-                          </button>
-                          {column.id !== "in-progress" && (
-                            <button
-                              onClick={() => moveTask(task._id!, "in-progress")}
-                              className="text-left px-3 py-2 hover:bg-white/10 rounded text-sm flex items-center gap-2 text-white/80 hover:text-white transition-colors"
+            <div className="space-y-4">
+              {getTasksByStatus(column.id).map((task) => (
+                <div
+                  key={task._id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, task._id!)}
+                  onDragEnd={handleDragEnd}
+                  className={`group relative bg-white/[0.02] border border-white/5 p-6 rounded-[1.8rem] transition-all duration-500 cursor-grab active:cursor-grabbing hover:bg-white/[0.04] hover:border-white/20 shadow-xl ${
+                    draggedTask === task._id
+                      ? "opacity-20 scale-95 grayscale"
+                      : "hover:scale-[1.02]"
+                  }`}
+                  onClick={() => router.push(`/details?type=task&id=${task._id}`)}
+                >
+                  {/* Background Glow */}
+                  <div className="absolute -top-12 -right-12 w-24 h-24 bg-blue-500/[0.03] blur-[50px] group-hover:bg-blue-500/[0.08] transition-all duration-700" />
+
+                  <div className="relative z-10 flex flex-col h-full">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                         <div className={`w-2 h-2 rounded-full ${priorityColors[task.priority]}`} />
+                         <span className="text-[8px] font-black text-white/20 uppercase tracking-[0.3em]">{task.priority} Priority</span>
+                      </div>
+                      
+                      {/* Persistent Action Node */}
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                         <button
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             setDeleteDialog({ isOpen: true, task });
+                           }}
+                           className="p-1.5 bg-red-500/5 hover:bg-red-500 text-red-500/40 hover:text-white rounded-lg border border-red-500/10 transition-all"
+                         >
+                           <Trash2 size={10} />
+                         </button>
+                      </div>
+                    </div>
+
+                    <h4 className="text-sm font-black text-white tracking-tighter uppercase italic leading-snug mb-3">
+                      {task.title}
+                    </h4>
+
+                    {task.description && (
+                      <p className="text-[11px] text-white/30 font-medium italic line-clamp-2 leading-relaxed mb-5">
+                        "{task.description}"
+                      </p>
+                    )}
+
+                    <div className="mt-auto flex items-center justify-between pt-4 border-t border-white/5">
+                      <div className="flex items-center gap-3">
+                        {task.dueDate && (
+                          <div className="flex items-center gap-1.5 text-[9px] font-black text-white/10 uppercase tracking-widest">
+                            <Calendar size={10} className="text-blue-500/40" />
+                            <span>{formatDate(task.dueDate)}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {task.tags && task.tags.length > 0 && (
+                        <div className="flex gap-1.5">
+                          {task.tags.slice(0, 1).map((tag, i) => (
+                            <span
+                              key={i}
+                              className="text-[8px] font-black text-white/10 uppercase tracking-tighter bg-white/5 px-2 py-0.5 rounded-md border border-white/5"
                             >
-                              <ArrowRight size={12} />
-                              Move to In Progress
-                            </button>
-                          )}
-                          {column.id !== "done" && (
-                            <button
-                              onClick={() => moveTask(task._id!, "done")}
-                              className="text-left px-3 py-2 hover:bg-white/10 rounded text-sm flex items-center gap-2 text-white/80 hover:text-white transition-colors"
-                            >
-                              <ArrowRight size={12} />
-                              Move to Done
-                            </button>
-                          )}
-                          {column.id !== "todo" && (
-                            <button
-                              onClick={() => moveTask(task._id!, "todo")}
-                              className="text-left px-3 py-2 hover:bg-white/10 rounded text-sm flex items-center gap-2 text-white/80 hover:text-white transition-colors"
-                            >
-                              <ArrowRight size={12} />
-                              Move to To Do
-                            </button>
-                          )}
-                          <button
-                            onClick={() =>
-                              setDeleteDialog({ isOpen: true, task })
-                            }
-                            className="text-left px-3 py-2 hover:bg-red-500/20 text-red-400 rounded text-sm transition-colors"
-                          >
-                            Delete
-                          </button>
+                              #{tag}
+                            </span>
+                          ))}
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
-
-                {task.description && (
-                  <p className="text-sm text-white/60 mb-3">
-                    {task.description}
-                  </p>
-                )}
-
-                <div className="flex items-center justify-between text-xs text-white/40">
-                  <div className="flex items-center gap-3">
-                    {task.dueDate && (
-                      <div className="flex items-center gap-1">
-                        <Calendar size={12} />
-                        <span>{formatDate(task.dueDate)}</span>
-                      </div>
-                    )}
-                    {task.assignee && (
-                      <div className="flex items-center gap-1">
-                        <User size={12} />
-                        <span>{task.assignee}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {task.tags && task.tags.length > 0 && (
-                    <div className="flex gap-1">
-                      {task.tags.slice(0, 2).map((tag, i) => (
-                        <span
-                          key={i}
-                          className="bg-white/10 text-white/60 px-2 py-1 rounded text-xs"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
 
             {column.id === "todo" && (
               <button
                 onClick={onCreateTask}
-                className="w-full p-4 border-2 border-dashed border-white/20 rounded-xl text-white/40 hover:border-white/30 hover:text-white/60 flex items-center justify-center gap-2 transition-colors"
+                className="w-full mt-6 py-8 border-2 border-dashed border-white/5 rounded-[1.8rem] text-white/10 hover:border-white/10 hover:bg-white/[0.02] hover:text-white/30 flex flex-col items-center justify-center gap-3 transition-all duration-500 group"
               >
-                <Plus size={16} />
-                Add Task
+                <div className="p-3 bg-white/5 rounded-2xl group-hover:scale-110 transition-transform">
+                   <Plus size={20} />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-[0.4em]">Initialize Node</span>
               </button>
             )}
           </div>
@@ -267,8 +233,8 @@ export default function KanbanBoard({
             setDeleteDialog({ isOpen: false, task: null });
           }
         }}
-        title="Delete Task"
-        message={`Are you sure you want to delete "${deleteDialog.task?.title}"? This action cannot be undone.`}
+        title="Institutional Purge"
+        message={`Terminate action node "${deleteDialog.task?.title}"? This protocol is irreversible.`}
       />
     </div>
   );

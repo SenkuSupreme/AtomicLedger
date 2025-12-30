@@ -10,6 +10,8 @@ import {
   CheckCircle,
   Circle,
   Eye,
+  Edit3,
+  Trash2,
 } from "lucide-react";
 import { IGoal } from "@/lib/models/Goal";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
@@ -50,6 +52,7 @@ export default function GoalCard({
   };
 
   const toggleMilestone = (milestoneIndex: number) => {
+    if (!goal.milestones) return;
     const updatedMilestones = [...goal.milestones];
     updatedMilestones[milestoneIndex] = {
       ...updatedMilestones[milestoneIndex],
@@ -75,132 +78,128 @@ export default function GoalCard({
   };
 
   return (
-    <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6 hover:border-white/20 transition-colors">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <h3 className="font-bold text-white tracking-tight">
-              {goal.title}
-            </h3>
-            <span
-              className={`px-2 py-1 rounded-lg text-xs border ${
-                categoryColors[goal.category]
-              }`}
-            >
-              {goal.category}
-            </span>
-          </div>
-          <div className="mb-3">
-            <span
-              className={`px-2 py-1 rounded-lg text-xs border ${
-                statusColors[goal.status]
-              }`}
-            >
-              {goal.status.replace("-", " ")}
-            </span>
-          </div>
-          {goal.description && (
-            <p className="text-sm text-white/60 mb-3">{goal.description}</p>
-          )}
-        </div>
+    <div 
+      className="group relative bg-white/[0.02] border border-white/5 rounded-[2.5rem] p-8 h-full flex flex-col transition-all duration-500 hover:bg-white/[0.04] hover:border-white/20 cursor-pointer overflow-hidden shadow-2xl"
+      onClick={() => router.push(`/details?type=goal&id=${goal._id}`)}
+    >
+      {/* Background Glow */}
+      <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/10 blur-[100px] group-hover:bg-blue-500/20 transition-all duration-700" />
+      
+      {/* Modal Grain Effect */}
+      <div className="absolute inset-0 z-0 opacity-[0.02] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
 
-        <div className="relative group">
-          <button className="text-white/40 hover:text-white/60 transition-colors">
-            <MoreHorizontal size={16} />
-          </button>
-          <div className="absolute right-0 top-6 bg-[#0A0A0A] border border-white/20 rounded-lg shadow-xl p-2 hidden group-hover:block z-10 min-w-32">
-            <button
-              onClick={() => router.push(`/details?type=goal&id=${goal._id}`)}
-              className="block w-full text-left px-3 py-2 hover:bg-white/10 rounded text-sm text-white/80 hover:text-white transition-colors flex items-center gap-2"
-            >
-              <Eye size={14} />
-              View Details
-            </button>
-            <button
-              onClick={() => onEdit(goal)}
-              className="block w-full text-left px-3 py-2 hover:bg-white/10 rounded text-sm text-white/80 hover:text-white transition-colors"
-            >
-              Edit
-            </button>
-            <button
-              onClick={() => setDeleteDialog(true)}
-              className="block w-full text-left px-3 py-2 hover:bg-red-500/20 text-red-400 rounded text-sm transition-colors"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
+      {/* Persistent Action Node - FRONT PROTECTED */}
+      <div className="absolute top-6 right-6 flex items-center gap-2 z-40">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit(goal);
+          }}
+          className="p-2.5 bg-white/5 hover:bg-white text-white/40 hover:text-black rounded-xl border border-white/10 transition-all duration-300"
+        >
+          <Edit3 size={14} />
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setDeleteDialog(true);
+          }}
+          className="p-2.5 bg-red-500/5 hover:bg-red-500 text-red-500 hover:text-white rounded-xl border border-red-500/10 transition-all duration-300"
+        >
+          <Trash2 size={14} />
+        </button>
       </div>
 
-      {/* Progress Bar */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-white/80">Progress</span>
-          <span className="text-sm text-white/60">{goal.progress}%</span>
+      {/* Category Node */}
+      <div className="mb-6 flex gap-2">
+        <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-xl border ${categoryColors[goal.category as keyof typeof categoryColors] || categoryColors.other}`}>
+           {goal.category || "General"} Node
+        </span>
+        <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-xl border ${statusColors[goal.status as keyof typeof statusColors] || statusColors["not-started"]}`}>
+          {goal.status?.replace("-", " ") || "Pending Sync"}
+        </span>
+      </div>
+
+      {/* Title & Description Mesh */}
+      <div className="relative z-10 space-y-4 flex-1 pointer-events-none">
+        <h3 className="text-2xl font-black text-white leading-tight tracking-tighter uppercase italic pr-20">
+          {goal.title}
+        </h3>
+        
+        {goal.description && (
+          <p className="text-white/40 text-sm leading-relaxed font-medium italic line-clamp-2">
+            "{goal.description}"
+          </p>
+        )}
+      </div>
+
+      {/* Progress Mesh */}
+      <div className="relative z-10 mt-8 mb-6 pointer-events-none">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Execution Progress</span>
+          <span className="text-[11px] font-black text-white italic">{goal.progress}%</span>
         </div>
-        <div className="w-full bg-white/10 rounded-full h-2">
+        <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden border border-white/5">
           <div
-            className="bg-white h-2 rounded-full transition-all duration-300"
+            className="bg-white h-full rounded-full transition-all duration-700 ease-out shadow-[0_0_10px_rgba(255,255,255,0.3)]"
             style={{ width: `${goal.progress}%` }}
           />
         </div>
       </div>
 
-      {/* Milestones */}
+      {/* Milestones Mesh */}
       {goal.milestones && goal.milestones.length > 0 && (
-        <div className="mb-4">
-          <h4 className="text-sm font-medium text-white/80 mb-2">Milestones</h4>
+        <div className="relative z-10 space-y-2 mb-8" onClick={(e) => e.stopPropagation()}>
+          <div className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] mb-3">Key Milestones</div>
           <div className="space-y-2">
-            {goal.milestones.map((milestone, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <button
-                  onClick={() => toggleMilestone(index)}
-                  className="text-white hover:text-white/80 transition-colors"
-                >
-                  {milestone.completed ? (
-                    <CheckCircle size={16} className="text-green-400" />
-                  ) : (
-                    <Circle size={16} className="text-white/40" />
-                  )}
-                </button>
-                <span
-                  className={`text-sm ${
-                    milestone.completed
-                      ? "line-through text-white/40"
-                      : "text-white/80"
-                  }`}
-                >
+            {goal.milestones.slice(0, 3).map((milestone, index) => (
+              <div 
+                key={index} 
+                className="flex items-center gap-3 bg-white/[0.02] px-3 py-2.5 rounded-2xl border border-white/5 hover:bg-white/[0.04] transition-all cursor-pointer"
+                onClick={() => toggleMilestone(index)}
+              >
+                {milestone.completed ? (
+                  <CheckCircle size={14} className="text-green-500" />
+                ) : (
+                  <div className="w-3.5 h-3.5 rounded-full border border-white/20" />
+                )}
+                <span className={`text-[11px] font-black uppercase tracking-tighter truncate italic ${milestone.completed ? "text-white/20 line-through" : "text-white/60"}`}>
                   {milestone.title}
                 </span>
               </div>
             ))}
+            {goal.milestones.length > 3 && (
+               <div className="text-[9px] font-black text-white/10 uppercase tracking-widest pl-2">
+                  + {goal.milestones.length - 3} More Signals
+               </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Footer */}
-      <div className="flex items-center justify-between text-xs text-white/40">
+      {/* Terminal Footer */}
+      <div className="mt-auto flex items-center justify-between text-[10px] font-black uppercase tracking-[0.2em] text-white/10 pt-6 border-t border-white/5 relative z-10 w-full pointer-events-none">
         <div className="flex items-center gap-3">
           {goal.targetDate && (
-            <div className="flex items-center gap-1">
-              <Calendar size={12} />
+            <div className="flex items-center gap-2">
+              <Calendar size={12} className="text-blue-500/40" />
               <span>Due {formatDate(goal.targetDate)}</span>
             </div>
           )}
-          <div className="flex items-center gap-1">
-            <Target size={12} />
-            <span>{goal.priority} priority</span>
+          <div className="flex items-center gap-2">
+            <Target size={12} className="text-purple-500/40" />
+            <span>{goal.priority} PL</span>
           </div>
         </div>
 
         {goal.tags && goal.tags.length > 0 && (
-          <div className="flex gap-1">
-            {goal.tags.slice(0, 2).map((tag, i) => (
+          <div className="flex gap-2">
+            {goal.tags.slice(0, 1).map((tag, i) => (
               <span
                 key={i}
-                className="bg-white/10 text-white/60 px-2 py-1 rounded text-xs"
+                className="bg-white/5 text-white/20 px-3 py-1 rounded-lg border border-white/5"
               >
-                {tag}
+                #{tag}
               </span>
             ))}
           </div>
@@ -212,8 +211,8 @@ export default function GoalCard({
         isOpen={deleteDialog}
         onClose={() => setDeleteDialog(false)}
         onConfirm={() => onDelete(goal._id!)}
-        title="Delete Goal"
-        message={`Are you sure you want to delete "${goal.title}"? This action cannot be undone.`}
+        title="Institutional Purge"
+        message={`Terminate objective signal "${goal.title}"? This protocol is irreversible.`}
       />
     </div>
   );

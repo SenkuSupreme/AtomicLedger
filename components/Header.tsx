@@ -74,13 +74,7 @@ const Header = React.memo(function Header() {
                     {/* Live Clock & Date */}
                     <Clock />
 
-                    {/* Session Indicator */}
-                    <div className="hidden lg:flex items-center gap-3">
-                        <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full">
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                            <span className="text-[10px] font-bold text-green-500 uppercase tracking-wider">NY Active</span>
-                        </div>
-                    </div>
+                    
 
                     {/* Notifications */}
                     <DropdownMenu>

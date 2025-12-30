@@ -55,21 +55,24 @@ export default function RiskMetricsWidget({
 
   return (
     <div className={`h-full ${className}`}>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-6">
         <div>
-          <h3 className="text-lg font-bold text-white">Risk Metrics</h3>
-          <p className="text-xs text-white/60 font-mono uppercase tracking-widest">
-            Risk Management
-          </p>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">Risk Management</span>
+          </div>
+          <h3 className="text-2xl font-black text-white italic tracking-tighter uppercase">Risk Metrics</h3>
         </div>
-        <Shield size={20} className="text-white/60" />
+        <div className="p-3 bg-white/5 rounded-2xl border border-white/10 text-red-500/80">
+          <Shield size={20} />
+        </div>
       </div>
 
       <div className="space-y-4">
         {riskMetrics.map((metric, index) => (
           <div
             key={index}
-            className={`p-4 rounded-xl border border-white/10 ${metric.bgColor}`}
+            className={`p-4 rounded-2xl border border-white/10 ${metric.bgColor} hover:border-white/20 transition-all`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -77,8 +80,8 @@ export default function RiskMetricsWidget({
                   {metric.icon}
                 </div>
                 <div>
-                  <div className="text-sm text-white/60">{metric.label}</div>
-                  <div className={`text-xl font-bold ${metric.color}`}>
+                  <div className="text-[10px] text-white/40 uppercase tracking-[0.3em] font-black">{metric.label}</div>
+                  <div className={`text-2xl font-black italic tabular-nums ${metric.color}`}>
                     {metric.value}
                   </div>
                 </div>

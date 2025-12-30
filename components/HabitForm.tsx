@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { IHabit } from "@/lib/models/Habit";
 
@@ -19,6 +19,14 @@ export default function HabitForm({ habit, onSave, onCancel }: HabitFormProps) {
     targetCount: habit?.targetCount || 1,
     tags: habit?.tags?.join(", ") || "",
   });
+
+  // Body scroll lock
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,145 +49,156 @@ export default function HabitForm({ habit, onSave, onCancel }: HabitFormProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-[#0A0A0A] border border-white/20 rounded-xl p-8 w-full max-w-md shadow-2xl">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-white tracking-tight">
-            {habit ? "Edit Habit" : "Create New Habit"}
-          </h2>
-          <button
-            onClick={onCancel}
-            className="text-white/40 hover:text-white/60 transition-colors"
-          >
-            <X size={20} />
-          </button>
-        </div>
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4 text-white">
+      {/* Background Decor */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/10 blur-[150px] -z-10" />
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">
-              Title *
-            </label>
-            <input
-              type="text"
-              required
-              value={formData.title}
-              onChange={(e) =>
-                setFormData({ ...formData, title: e.target.value })
-              }
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/40 focus:border-white/20 focus:outline-none transition-colors"
-              placeholder="Enter habit title"
-            />
-          </div>
+      <div className="bg-[#0A0A0A]/90 border border-white/5 rounded-[3.5rem] p-10 w-full max-w-3xl shadow-3xl relative overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Modal Grain Effect */}
+        <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
 
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">
-              Description
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/40 focus:border-white/20 focus:outline-none transition-colors resize-none"
-              rows={3}
-              placeholder="Enter habit description"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        <div className="relative z-10 flex flex-col flex-1 min-h-0">
+          <div className="flex items-center justify-between mb-10 border-b border-white/5 pb-8">
             <div>
-              <label className="block text-sm font-medium text-white/80 mb-2">
-                Category
-              </label>
-              <select
-                value={formData.category}
-                onChange={(e) =>
-                  setFormData({ ...formData, category: e.target.value as any })
-                }
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-white/20 focus:outline-none transition-colors"
-              >
-                <option value="trading">Trading</option>
-                <option value="health">Health</option>
-                <option value="learning">Learning</option>
-                <option value="productivity">Productivity</option>
-                <option value="other">Other</option>
-              </select>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">Protocol Configuration</span>
+              </div>
+              <h2 className="text-3xl font-black tracking-tighter uppercase italic">
+                {habit ? "Modify Ledger" : "Init Execution"}
+              </h2>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-white/80 mb-2">
-                Frequency
-              </label>
-              <select
-                value={formData.frequency}
-                onChange={(e) =>
-                  setFormData({ ...formData, frequency: e.target.value as any })
-                }
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:border-white/20 focus:outline-none transition-colors"
-              >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">
-              Target Count
-            </label>
-            <input
-              type="number"
-              min="1"
-              required
-              value={formData.targetCount}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  targetCount: parseInt(e.target.value) || 1,
-                })
-              }
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/40 focus:border-white/20 focus:outline-none transition-colors"
-              placeholder="How many times per frequency period?"
-            />
-            <p className="text-xs text-white/40 mt-1">
-              Number of times to complete this habit per{" "}
-              {formData.frequency.slice(0, -2)} period
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">
-              Tags
-            </label>
-            <input
-              type="text"
-              value={formData.tags}
-              onChange={(e) =>
-                setFormData({ ...formData, tags: e.target.value })
-              }
-              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-white/40 focus:border-white/20 focus:outline-none transition-colors"
-              placeholder="Enter tags separated by commas"
-            />
-          </div>
-
-          <div className="flex gap-3 pt-4">
             <button
-              type="submit"
-              className="flex-1 bg-white text-black py-3 px-4 rounded-xl font-bold hover:bg-gray-200 transition-colors"
-            >
-              {habit ? "Update Habit" : "Create Habit"}
-            </button>
-            <button
-              type="button"
               onClick={onCancel}
-              className="flex-1 bg-white/10 text-white py-3 px-4 rounded-xl font-medium hover:bg-white/20 transition-colors"
+              className="p-4 bg-white/5 hover:bg-white text-white/40 hover:text-black rounded-2xl border border-white/10 transition-all active:scale-95"
             >
-              Cancel
+              <X size={20} />
             </button>
           </div>
-        </form>
+
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0 pb-10">
+              <div className="space-y-10 p-2">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                  {/* Left Column */}
+                  <div className="space-y-10">
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 block px-2">Protocol Identifier</label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        className="w-full px-8 py-6 bg-white/[0.03] border border-white/5 rounded-[2rem] text-white font-black uppercase italic tracking-tighter focus:bg-white/[0.06] focus:border-white/20 transition-all outline-none shadow-inner text-lg"
+                        placeholder="E.g. Daily Chart Review"
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 block px-2">Institutional Description</label>
+                      <textarea
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        className="w-full px-8 py-6 bg-white/[0.03] border border-white/5 rounded-[2rem] text-white/80 font-medium italic focus:bg-white/[0.06] focus:border-white/20 transition-all outline-none resize-none shadow-inner leading-relaxed"
+                        rows={6}
+                        placeholder="Define the execution parameters and neural triggers..."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right Column */}
+                  <div className="space-y-10">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 block px-2">Domain Category</label>
+                        <select
+                          value={formData.category}
+                          onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
+                          className="w-full px-8 py-5 bg-white/[0.03] border border-white/5 rounded-2xl text-white font-black uppercase tracking-widest focus:bg-white/[0.06] focus:border-white/20 transition-all outline-none cursor-pointer appearance-none shadow-inner"
+                        >
+                          <option value="trading">Trading</option>
+                          <option value="health">Health</option>
+                          <option value="learning">Learning</option>
+                          <option value="productivity">Productivity</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 block px-2">Cycle Frequency</label>
+                        <select
+                          value={formData.frequency}
+                          onChange={(e) => setFormData({ ...formData, frequency: e.target.value as any })}
+                          className="w-full px-8 py-5 bg-white/[0.03] border border-white/5 rounded-2xl text-white font-black uppercase tracking-widest focus:bg-white/[0.06] focus:border-white/20 transition-all outline-none cursor-pointer appearance-none shadow-inner"
+                        >
+                          <option value="daily">Daily</option>
+                          <option value="weekly">Weekly</option>
+                          <option value="monthly">Monthly</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 block px-2">Target Execution Intensity</label>
+                      <div className="bg-white/[0.02] border border-white/5 rounded-[2rem] p-8 flex items-center justify-between group hover:bg-white/[0.04] transition-all">
+                        <div className="space-y-1">
+                          <p className="text-2xl font-black italic text-white">{formData.targetCount}</p>
+                          <p className="text-[10px] font-black text-white/20 uppercase tracking-widest">Logs / {formData.frequency.replace("ly", "")}</p>
+                        </div>
+                        <div className="flex gap-4">
+                          <button 
+                            type="button"
+                            onClick={() => setFormData({ ...formData, targetCount: Math.max(1, formData.targetCount - 1) })}
+                            className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:bg-white hover:text-black transition-all active:scale-95"
+                          >
+                            -
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => setFormData({ ...formData, targetCount: formData.targetCount + 1 })}
+                            className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:bg-white hover:text-black transition-all active:scale-95"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <input type="hidden" value={formData.targetCount} {...(habit ? {} : { required: true })} />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 block px-2">Metadata Fragments</label>
+                      <input
+                        type="text"
+                        value={formData.tags}
+                        onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                        className="w-full px-8 py-5 bg-white/[0.03] border border-white/5 rounded-2xl text-white/40 font-medium focus:bg-white/[0.06] focus:border-white/20 transition-all outline-none shadow-inner"
+                        placeholder="Analysis, Edge, Review..."
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-6 pt-10 border-t border-white/5 mt-auto">
+              <button
+                type="submit"
+                className="flex-1 bg-white text-black py-6 px-10 rounded-2xl font-black text-xs uppercase tracking-[0.3em] hover:bg-gray-200 transition-all shadow-[0_20px_40px_rgba(255,255,255,0.1)] active:scale-95"
+              >
+                {habit ? "Commit Changes" : "Create Protocol"}
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="flex-[0.5] bg-white/5 text-white/40 py-6 px-10 rounded-2xl font-black text-xs uppercase tracking-[0.3em] border border-white/5 hover:bg-white/[0.08] hover:text-white transition-all active:scale-95"
+              >
+                Abort Sync
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

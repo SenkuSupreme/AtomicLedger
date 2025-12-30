@@ -107,7 +107,7 @@ export default function MetricWidget({
   return (
     <div className={`h-full ${className}`}>
       <div className="flex justify-between items-start mb-6">
-        <div className="p-3 bg-white/5 rounded-xl text-white/70 group-hover:text-white group-hover:bg-white/10 transition-all">
+        <div className="p-3 bg-white/5 rounded-2xl border border-white/10 text-white/70 group-hover:text-white group-hover:bg-white/10 transition-all">
           <IconComponent size={24} />
         </div>
         {trend === "up" && (
@@ -118,16 +118,16 @@ export default function MetricWidget({
         )}
       </div>
 
-      <div className="text-3xl font-bold text-white tracking-tight mb-2">
+      <div className="text-4xl font-black text-white tracking-tighter mb-3 italic tabular-nums">
         {value}
       </div>
 
       <div className="flex justify-between items-end">
-        <div className="text-xs font-black text-white/50 uppercase tracking-[0.15em]">
+        <div className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">
           {config.label}
         </div>
         <div
-          className={`text-xs font-bold ${
+          className={`text-[10px] font-black uppercase tracking-wider italic ${
             trend === "up"
               ? "text-emerald-500"
               : trend === "down"

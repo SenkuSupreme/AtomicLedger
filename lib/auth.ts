@@ -31,7 +31,13 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Invalid password");
         }
 
-        return { id: user._id.toString(), email: user.email, name: user.name };
+        return { 
+          id: user._id.toString(), 
+          email: user.email, 
+          name: user.name,
+          username: user.username,
+          image: user.image
+        };
       },
     }),
   ],
@@ -40,12 +46,39 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         // @ts-ignore
         session.user.id = token.sub;
+        // @ts-ignore
+        session.user.username = token.username || "";
+        // @ts-ignore
+        session.user.image = token.image || "";
+        // @ts-ignore
+        session.user.name = token.name || "";
       }
       return session;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.sub = user.id;
+        // @ts-ignore
+        token.username = user.username;
+        // @ts-ignore
+        token.image = user.image;
+      }
+
+      if (trigger === "update" && session) {
+        // Handle manual session update
+        token.username = session.username ?? token.username;
+        token.image = session.image ?? token.image;
+        token.name = session.name ?? token.name;
+      } else if (token.sub) {
+        // Periodically sync with DB for sessions that aren't manual updates
+        await dbConnect();
+        const dbUser = await User.findById(token.sub).select('username image name').lean();
+        if (dbUser) {
+          // @ts-ignore
+          token.username = dbUser.username;
+          token.image = dbUser.image;
+          token.name = dbUser.name;
+        }
       }
       return token;
     },

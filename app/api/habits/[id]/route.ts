@@ -1,84 +1,106 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import dbConnect from '@/lib/db';
-import Habit from '@/lib/models/Habit';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import dbConnect from "@/lib/db";
+import Habit from "@/lib/models/Habit";
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
     await dbConnect();
-    
+
     const habit = await Habit.findOne({
       _id: id,
-      userId: session.user.email
+      // @ts-ignore
+      userId: session.user.id,
     });
-    
+
     if (!habit) {
-      return NextResponse.json({ error: 'Habit not found' }, { status: 404 });
+      return NextResponse.json({ error: "Habit not found" }, { status: 404 });
     }
-    
+
     return NextResponse.json(habit);
   } catch (error) {
-    console.error('Error fetching habit:', error);
-    return NextResponse.json({ error: 'Failed to fetch habit' }, { status: 500 });
+    console.error("Error fetching habit:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch habit" },
+      { status: 500 }
+    );
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
     const body = await request.json();
     await dbConnect();
-    
+
     const habit = await Habit.findOneAndUpdate(
-      { _id: id, userId: session.user.email },
+      // @ts-ignore
+      { _id: id, userId: session.user.id },
       body,
       { new: true }
     );
-    
+
     if (!habit) {
-      return NextResponse.json({ error: 'Habit not found' }, { status: 404 });
+      return NextResponse.json({ error: "Habit not found" }, { status: 404 });
     }
-    
+
     return NextResponse.json(habit);
   } catch (error) {
-    console.error('Error updating habit:', error);
-    return NextResponse.json({ error: 'Failed to update habit' }, { status: 500 });
+    console.error("Error updating habit:", error);
+    return NextResponse.json(
+      { error: "Failed to update habit" },
+      { status: 500 }
+    );
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
     await dbConnect();
-    
+
     const habit = await Habit.findOneAndDelete({
       _id: id,
-      userId: session.user.email
+      // @ts-ignore
+      userId: session.user.id,
     });
-    
+
     if (!habit) {
-      return NextResponse.json({ error: 'Habit not found' }, { status: 404 });
+      return NextResponse.json({ error: "Habit not found" }, { status: 404 });
     }
-    
-    return NextResponse.json({ message: 'Habit deleted successfully' });
+
+    return NextResponse.json({ message: "Habit deleted successfully" });
   } catch (error) {
-    console.error('Error deleting habit:', error);
-    return NextResponse.json({ error: 'Failed to delete habit' }, { status: 500 });
+    console.error("Error deleting habit:", error);
+    return NextResponse.json(
+      { error: "Failed to delete habit" },
+      { status: 500 }
+    );
   }
 }

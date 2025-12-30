@@ -1174,7 +1174,7 @@ export default function NewTradeDialog({
                     Risk-To-Reward Intel
                   </label>
                   <div className="grid grid-cols-1 gap-8">
-                    <div className="flex items-center gap-12 bg-zinc-900/60 p-12 rounded-[3rem] border border-white/10 shadow-3xl relative overflow-hidden group">
+                    <div className="flex flex-col sm:flex-row items-center gap-6 lg:gap-12 bg-zinc-900/60 p-8 lg:p-12 rounded-[2.5rem] lg:rounded-[3rem] border border-white/10 shadow-3xl relative overflow-hidden group">
                       <div className="absolute inset-0 bg-sky-500/[0.02] opacity-0 group-hover:opacity-100 transition-opacity" />
                       <div className="flex-1 space-y-4 relative z-10">
                         <span className="text-xs font-black text-white/70 uppercase tracking-[0.2em] block">
@@ -1187,7 +1187,7 @@ export default function NewTradeDialog({
                             onChange={(e) =>
                               setForm({ ...form, targetRR: e.target.value })
                             }
-                            className="bg-transparent border-none p-0 h-auto text-6xl font-black text-sky-400 focus:ring-0 placeholder:text-sky-500/10"
+                            className="bg-transparent border-none p-0 h-auto text-4xl lg:text-5xl font-black text-sky-400 focus:ring-0 placeholder:text-sky-500/10"
                             placeholder="0.0"
                             readOnly={
                               !!form.takeProfit &&
@@ -1207,7 +1207,7 @@ export default function NewTradeDialog({
                             )}
                         </div>
                       </div>
-                      <div className="w-[1px] h-20 bg-white/10 relative z-10" />
+                      <div className="hidden sm:block w-[1px] h-20 bg-white/10 relative z-10" />
                       <div className="flex-1 space-y-4 relative z-10">
                         <span className="text-xs font-black text-white/70 uppercase tracking-[0.2em] block">
                           Actual RR
@@ -1219,7 +1219,7 @@ export default function NewTradeDialog({
                             onChange={(e) =>
                               setForm({ ...form, actualRR: e.target.value })
                             }
-                            className="bg-transparent border-none p-0 h-auto text-6xl font-black text-emerald-400 focus:ring-0 placeholder:text-emerald-500/10"
+                            className="bg-transparent border-none p-0 h-auto text-4xl lg:text-5xl font-black text-emerald-400 focus:ring-0 placeholder:text-emerald-500/10"
                             placeholder="0.0"
                             readOnly={
                               !!form.exitPrice &&

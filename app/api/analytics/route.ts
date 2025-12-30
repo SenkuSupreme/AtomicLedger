@@ -101,6 +101,7 @@ export async function GET(req: Request) {
   const gradeBreakdown: Record<string, { count: number; avgPnl: number; totalPnl: number; avgR: number; totalR: number }> = {};
   const monthlyData: Record<string, { pnl: number; trades: number; wins: number; losses: number; totalR: number }> = {};
   const assetTypeBreakdown: Record<string, { count: number; pnl: number; avgR: number }> = {};
+  const symbolMap = new Map<string, { count: number; pnl: number }>();
   const directionBreakdown = { long: { count: 0, pnl: 0, wins: 0 }, short: { count: 0, pnl: 0, wins: 0 } };
   
   // For Drawdown Calculation and Streak Tracking
@@ -133,6 +134,14 @@ export async function GET(req: Request) {
     totalRiskAmount += metrics.riskAmount;
     totalPositionValue += metrics.positionValue;
     totalR += rMultiple;
+
+    // Symbol distribution
+    const symbol = trade.symbol || "UNKNOWN";
+    const currentSymbol = symbolMap.get(symbol) || { count: 0, pnl: 0 };
+    symbolMap.set(symbol, {
+      count: currentSymbol.count + 1,
+      pnl: currentSymbol.pnl + pnl,
+    });
     
     // Track wins/losses with more precision
     if (pnl > 0.01) {
@@ -285,14 +294,30 @@ export async function GET(req: Request) {
   });
 
   // Generate equity curve
-  const equityCurve = processedTrades.map((trade, index) => ({
-    name: new Date(trade.timestampEntry).toLocaleDateString(),
-    value: trade.equityValue,
-    date: trade.timestampEntry,
-    pnl: trade.calculatedMetrics.netPnl,
-    rMultiple: trade.calculatedMetrics.rMultiple,
-    tradeNumber: index + 1
-  }));
+  const equityCurve: any[] = [];
+  
+  // Add initial point
+  if (processedTrades.length > 0) {
+    equityCurve.push({
+      name: 'Start',
+      value: 0,
+      date: processedTrades[0].timestampEntry,
+      pnl: 0,
+      rMultiple: 0,
+      tradeNumber: 0
+    });
+  }
+
+  processedTrades.forEach((trade, index) => {
+    equityCurve.push({
+      name: new Date(trade.timestampEntry).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      value: trade.equityValue,
+      date: trade.timestampEntry,
+      pnl: trade.calculatedMetrics.netPnl,
+      rMultiple: trade.calculatedMetrics.rMultiple,
+      tradeNumber: index + 1
+    });
+  });
 
   const heatmap = Object.values(heatmapData);
   
@@ -341,7 +366,7 @@ export async function GET(req: Request) {
   const averagePositionSize = totalTrades > 0 ? totalPositionValue / totalTrades : 0;
   
   // Risk metrics
-  const maxRiskPerTrade = Math.max(...processedTrades.map(t => t.calculatedMetrics.riskAmount));
+  const maxRiskPerTrade = Math.max(...processedTrades.map(t => t.calculatedMetrics.riskAmount), 0);
   const avgAccountRisk = totalTrades > 0 ? 
     processedTrades.reduce((sum, t) => sum + t.calculatedMetrics.accountRisk, 0) / totalTrades : 0;
 
@@ -441,6 +466,24 @@ export async function GET(req: Request) {
       currentStreakType,
       bestWinStreak,
       worstLossStreak
+    },
+
+    // Activity Map & Distribution (Needed for Widgets)
+    distribution: symbolMap.size > 0 ? 
+      Array.from(symbolMap.entries())
+        .map(([name, val]: [string, any]) => ({
+          name,
+          count: val.count,
+          pnl: val.pnl,
+          percentage: totalTrades > 0 ? Math.round((val.count / totalTrades) * 100) : 0,
+        }))
+        .sort((a: any, b: any) => b.count - a.count)
+        .slice(0, 4) : [],
+    
+    summary: {
+      mostActive: symbolMap.size > 0 ? Array.from(symbolMap.entries())
+        .sort((a: any, b: any) => b[1].count - a[1].count)[0]?.[0] || "N/A" : "N/A",
+      totalPnL: totalPnl
     }
   };
 

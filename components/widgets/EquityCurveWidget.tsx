@@ -8,6 +8,7 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  CartesianGrid
 } from "recharts";
 import { Activity } from "lucide-react";
 
@@ -38,7 +39,7 @@ export default function EquityCurveWidget({
             </div>
             <div
               className={`text-2xl font-black ${
-                (stats?.totalPnl || 0) >= 0 ? "text-green-400" : "text-red-400"
+                (stats?.totalPnl || 0) >= 0 ? "text-emerald-400" : "text-rose-400"
               }`}
             >
               {(stats?.totalPnl || 0) >= 0 ? "+" : ""}$
@@ -54,51 +55,59 @@ export default function EquityCurveWidget({
             <AreaChart data={stats.equityCurve}>
               <defs>
                 <linearGradient id="colorPnL" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#fff" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#fff" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                 </linearGradient>
               </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
               <XAxis
                 dataKey="name"
-                stroke="#333"
-                tick={{ fill: "#888", fontSize: 11 }}
+                stroke="rgba(255,255,255,0.1)"
+                tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 10, fontWeight: 700 }}
                 tickLine={false}
                 axisLine={false}
                 padding={{ left: 20, right: 20 }}
+                minTickGap={30}
               />
               <YAxis
-                stroke="#333"
-                tick={{ fill: "#888", fontSize: 11 }}
+                stroke="rgba(255,255,255,0.1)"
+                tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 10, fontWeight: 700 }}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(value) => `${value}`}
+                width={40}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#000",
-                  border: "1px solid #222",
-                  borderRadius: "8px",
+                  backgroundColor: "#0A0A0A",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: "12px",
                   color: "#fff",
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.5)"
                 }}
-                itemStyle={{ color: "#fff" }}
-                cursor={{ stroke: "#444", strokeWidth: 1 }}
+                itemStyle={{ color: "#fff", fontSize: "12px", fontWeight: "600" }}
+                labelStyle={{ color: "rgba(255,255,255,0.5)", fontSize: "10px", fontWeight: "600", marginBottom: "4px" }}
+                cursor={{ stroke: "rgba(255,255,255,0.2)", strokeWidth: 1, strokeDasharray: "4 4" }}
               />
               <Area
                 type="monotone"
                 dataKey="value"
-                stroke="#fff"
-                strokeWidth={3}
+                stroke="#3b82f6"
+                strokeWidth={2}
                 fillOpacity={1}
                 fill="url(#colorPnL)"
                 animationDuration={1500}
+                activeDot={{ r: 4, strokeWidth: 0, fill: "#fff" }}
               />
             </AreaChart>
           </ResponsiveContainer>
         ) : (
-          <div className="flex h-full items-center justify-center text-gray-700 font-mono text-xs border border-dashed border-white/5 rounded-xl bg-white/1">
-            <div className="flex flex-col items-center gap-2">
-              <Activity size={24} className="opacity-20" />
-              WAITING FOR MARKET DATA...
+          <div className="flex h-full items-center justify-center border border-dashed border-white/5 rounded-2xl bg-white/[0.01]">
+            <div className="flex flex-col items-center gap-3 opacity-40">
+              <div className="p-3 bg-white/5 rounded-full">
+                <Activity size={20} className="text-white/70" />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">Waiting for Market Data</span>
             </div>
           </div>
         )}

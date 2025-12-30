@@ -16,8 +16,11 @@ import {
   BarChart3,
   TrendingUp,
   Target,
+  Globe,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
+import { toast } from "sonner";
 
 interface Note {
   _id: string;
@@ -143,108 +146,230 @@ export default function NotesPage() {
 
   if (loading) {
     return (
-      <div className="flex h-[80vh] w-full items-center justify-center text-white/60 font-mono text-xs uppercase tracking-[0.3em] animate-pulse">
-        Loading Notes...
+      <div className="flex h-[80vh] w-full items-center justify-center text-white/20 font-black text-xs uppercase tracking-[0.5em] animate-pulse">
+        Synchronizing Intelligence Nodes...
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 font-sans text-white">
-      {/* Header */}
-      <div className="flex items-end justify-between border-b border-white/10 pb-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-1">
-            Trading Notes
-          </h1>
-          <p className="text-white/70 text-sm font-medium">
-            Capture insights, strategies, and observations
-          </p>
-        </div>
-
-        <button
-          onClick={() => {
-            setEditingNote(null);
-            setShowEditor(true);
-          }}
-          className="flex items-center gap-2 bg-white text-black hover:bg-gray-200 px-5 py-2.5 rounded-xl font-bold transition-all shadow-xl shadow-white/5 active:scale-95"
-        >
-          <Plus size={18} />
-          NEW NOTE
-        </button>
+    <div className="space-y-12 text-white font-sans relative min-h-screen pb-20 overflow-hidden">
+      {/* Institutional Background Mesh */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+        <div className="absolute top-0 right-0 w-[1000px] h-[1000px] bg-blue-500/[0.03] blur-[150px] -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-[1000px] h-[1000px] bg-purple-500/[0.03] blur-[150px] translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search
-            size={20}
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40"
-          />
-          <input
-            type="text"
-            placeholder="Search notes, tags, or content..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-white/30"
-          />
-        </div>
-
-        <div className="flex gap-2 overflow-x-auto">
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => setSelectedCategory(category.id)}
-              className={`flex items-center gap-2 px-4 py-3 rounded-xl font-medium transition-all whitespace-nowrap ${
-                selectedCategory === category.id
-                  ? "bg-white text-black"
-                  : "bg-white/10 text-white/60 hover:bg-white/20 hover:text-white"
-              }`}
-            >
-              {category.icon}
-              {category.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Notes Grid */}
-      {sortedNotes.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6 border border-white/10">
-            <FileText size={32} className="text-white/60" />
+      {/* Header Mesh */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-white/5 pb-10 relative z-10 gap-8">
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full">
+               <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+               <span className="text-[9px] font-black uppercase tracking-[0.3em] text-blue-400">Terminal 06 Live</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1 bg-white/[0.03] border border-white/5 rounded-full text-white/20">
+               <Globe size={10} />
+               <span className="text-[9px] font-black uppercase tracking-[0.3em]">Mesh Sync: Active</span>
+            </div>
           </div>
-          <h3 className="text-xl font-bold text-white mb-2">No Notes Found</h3>
-          <p className="text-white/60 mb-6">
-            {searchTerm || selectedCategory !== "all"
-              ? "Try adjusting your search or filters"
-              : "Start capturing your trading insights and strategies"}
+          <h1 className="text-6xl font-black tracking-tighter italic uppercase bg-gradient-to-br from-white to-white/40 bg-clip-text text-transparent leading-none">
+            Trading Notebook
+          </h1>
+          <p className="text-white/30 text-sm font-medium italic max-w-xl leading-relaxed">
+            "Institutional ledger for market anomalies, cognitive shifts, and protocol adjustments. Every entry is a signal in the noise."
           </p>
+        </div>
+
+        <div className="flex flex-col gap-4 items-end">
+          <div className="text-right hidden md:block">
+            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] mb-1">Last Transmission</p>
+            <p className="text-xs font-mono text-blue-400/60 uppercase">{new Date().toLocaleTimeString()} UTC</p>
+          </div>
           <button
             onClick={() => {
               setEditingNote(null);
               setShowEditor(true);
             }}
-            className="bg-white text-black hover:bg-gray-200 px-6 py-3 rounded-xl font-bold transition-all"
+            className="group relative flex items-center gap-4 bg-white text-black hover:bg-blue-500 hover:text-white px-10 py-5 rounded-[2rem] font-black text-[11px] uppercase tracking-[0.3em] transition-all shadow-[0_20px_40px_rgba(255,255,255,0.1)] hover:shadow-blue-500/20 active:scale-95 overflow-hidden"
           >
-            Create Your First Note
+            <div className="absolute inset-0 bg-black/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+            <Plus size={18} className="relative z-10" />
+            <span className="relative z-10">Initialize Record</span>
           </button>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sortedNotes.map((note) => (
-            <NoteCard
-              key={note._id}
-              note={note}
-              onEdit={() => {
-                setEditingNote(note);
+      </div>
+
+      {/* Intelligence Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative z-10">
+        {[
+          { icon: <FileText size={18} />, label: "Total Records", value: notes.length, color: "blue" },
+          { icon: <Star size={18} />, label: "Priority Pins", value: notes.filter(n => n.isPinned).length, color: "yellow" },
+          { icon: <Tag size={18} />, label: "Signal Fractals", value: [...new Set(notes.flatMap(n => n.tags))].length, color: "purple" },
+          { icon: <Clock size={18} />, label: "Last Sync", value: notes.length > 0 ? new Date(notes[0].updatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : "--", color: "green" },
+        ].map((stat, i) => (
+          <motion.div 
+            key={i} 
+            whileHover={{ y: -5 }}
+            className="bg-white/[0.02] backdrop-blur-md border border-white/5 rounded-[2.5rem] p-8 group hover:bg-white/[0.04] transition-all duration-500 relative overflow-hidden flex flex-col justify-between"
+          >
+            <div className={`absolute inset-0 bg-${stat.color}-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+            <div className="flex items-center justify-between mb-8 relative z-10">
+              <div className={`p-3 bg-${stat.color}-500/10 rounded-2xl border border-${stat.color}-500/20 group-hover:bg-black group-hover:text-${stat.color}-500 transition-all text-${stat.color}-500`}>
+                 {stat.icon}
+              </div>
+              <span className="text-4xl font-black italic tracking-tighter text-white/90 group-hover:text-black transition-colors">{stat.value}</span>
+            </div>
+            <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] group-hover:text-black transition-colors relative z-10">
+              {stat.label}
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Institutional Filter Mesh */}
+      <div className="flex flex-col lg:flex-row gap-6 relative z-10 bg-white/[0.01] border border-white/5 p-6 rounded-[2.5rem] backdrop-blur-xl">
+        <div className="relative flex-1 group">
+          <Search
+            size={18}
+            className="absolute left-6 top-1/2 -translate-y-1/2 text-white/10 group-focus-within:text-blue-500 transition-colors"
+          />
+          <input
+            type="text"
+            placeholder="Scan signals and record identifiers..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-16 pr-8 py-5 bg-white/[0.02] border border-white/5 rounded-2xl text-white placeholder:text-white/10 text-[11px] font-black uppercase tracking-[0.2em] focus:border-blue-500/30 focus:outline-none focus:bg-white/[0.04] transition-all shadow-inner"
+          />
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex bg-white/[0.02] border border-white/5 rounded-2xl p-1.5 overflow-x-auto custom-scrollbar no-scrollbar">
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                className={`flex items-center gap-3 px-6 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 ${
+                  selectedCategory === category.id
+                    ? "bg-white text-black shadow-xl"
+                    : "text-white/30 hover:text-white/60 hover:bg-white/5"
+                }`}
+              >
+                <span className={selectedCategory === category.id ? "text-black" : "text-blue-500/60"}>
+                  {category.icon}
+                </span>
+                {category.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Notes Content Sector */}
+      <AnimatePresence mode="wait">
+        {notes.length === 0 ? (
+          <motion.div 
+            key="empty"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="flex flex-col items-center justify-center py-40 relative group z-10"
+          >
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-500/5 blur-[120px] rounded-full group-hover:bg-blue-500/10 transition-all duration-700" />
+            <div className="relative">
+               <div className="absolute inset-0 bg-blue-500/20 blur-[40px] animate-pulse rounded-full" />
+               <div className="w-32 h-32 bg-black border border-white/10 rounded-[3rem] flex items-center justify-center relative z-10 shadow-2xl overflow-hidden mb-12">
+                  <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.05)_50%,transparent_75%)] bg-[length:250%_250%] animate-[shimmer_3s_infinite]" />
+                  <BookOpen size={48} className="text-blue-500/60" />
+               </div>
+            </div>
+            <h3 className="text-3xl font-black text-white mb-4 uppercase tracking-tighter italic">No Neural Records Found</h3>
+            <p className="text-white/30 text-[11px] font-black uppercase tracking-[0.4em] mb-12 max-w-sm text-center leading-relaxed italic">
+              "The ledger is void. Awaiting first transmission of institutional data."
+            </p>
+            <button
+              onClick={() => {
+                setEditingNote(null);
                 setShowEditor(true);
               }}
-              onDelete={() => setDeleteDialog({ isOpen: true, note })}
-            />
-          ))}
-        </div>
-      )}
+              className="flex items-center gap-4 bg-white/5 hover:bg-white text-white/40 hover:text-black px-12 py-6 rounded-2xl font-black text-[11px] uppercase tracking-[0.4em] border border-white/10 transition-all active:scale-95 backdrop-blur-md"
+            >
+              <Plus size={18} />
+              Initialize Record 01
+            </button>
+          </motion.div>
+        ) : (
+          <motion.div 
+            key="content"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-24 relative z-10"
+          >
+            {/* Pinned Section */}
+            <AnimatePresence>
+              {sortedNotes.some(n => n.isPinned) && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-10"
+                >
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-3 px-6 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-full">
+                      <Star size={14} className="text-yellow-500 animate-pulse" fill="currentColor" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.4em] text-yellow-500">Priority Protocols</span>
+                    </div>
+                    <div className="h-px flex-1 bg-gradient-to-r from-yellow-500/20 to-transparent" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {sortedNotes.filter(n => n.isPinned).map((note) => (
+                      <NoteCard
+                        key={note._id}
+                        note={note}
+                        onEdit={() => {
+                          setEditingNote(note);
+                          setShowEditor(true);
+                        }}
+                        onDelete={() => setDeleteDialog({ isOpen: true, note })}
+                      />
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Regular Section */}
+            <div className="space-y-10">
+              {sortedNotes.some(n => n.isPinned) && (
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-3 px-6 py-2 bg-white/5 border border-white/10 rounded-full">
+                    <FileText size={14} className="text-white/30" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">General Frequency</span>
+                  </div>
+                  <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                </div>
+              )}
+              <motion.div 
+                layout
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10"
+              >
+                {sortedNotes.filter(n => !n.isPinned).map((note) => (
+                  <NoteCard
+                    key={note._id}
+                    note={note}
+                    onEdit={() => {
+                      setEditingNote(note);
+                      setShowEditor(true);
+                    }}
+                    onDelete={() => setDeleteDialog({ isOpen: true, note })}
+                  />
+                ))}
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Note Editor Modal */}
       {showEditor && (
@@ -271,8 +396,8 @@ export default function NotesPage() {
             deleteNote(deleteDialog.note._id);
           }
         }}
-        title="Delete Note"
-        message={`Are you sure you want to delete "${deleteDialog.note?.title}"? This action cannot be undone.`}
+        title="Terminate Record"
+        message={`Terminate intelligence node "${deleteDialog.note?.title}"? This action cannot be reversed within this cycle.`}
       />
     </div>
   );
@@ -289,77 +414,92 @@ function NoteCard({
   onDelete: () => void;
 }) {
   const getCategoryColor = (category: string) => {
-    const colors = {
-      trading: "bg-blue-500/20 text-blue-400",
-      analysis: "bg-green-500/20 text-green-400",
-      strategy: "bg-purple-500/20 text-purple-400",
-      journal: "bg-orange-500/20 text-orange-400",
-      general: "bg-gray-500/20 text-gray-400",
-    };
-    return colors[category as keyof typeof colors] || colors.general;
+    switch (category) {
+      case "trading": return "text-blue-500 bg-blue-500/10 border-blue-500/20";
+      case "analysis": return "text-purple-500 bg-purple-500/10 border-purple-500/20";
+      case "strategy": return "text-green-500 bg-green-500/10 border-green-500/20";
+      case "journal": return "text-amber-500 bg-amber-500/10 border-amber-500/20";
+      default: return "text-gray-400 bg-white/5 border-white/10";
+    }
   };
 
   return (
-    <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all group">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-2">
-          {note.isPinned && <Star size={16} className="text-yellow-400" />}
-          <span
-            className={`px-2 py-1 rounded-lg text-xs font-medium ${getCategoryColor(
-              note.category
-            )}`}
-          >
-            {note.category}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={onEdit}
-            className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white/60 hover:text-white transition-colors"
-          >
-            <Edit3 size={14} />
-          </button>
-          <button
-            onClick={onDelete}
-            className="p-2 bg-red-500/20 hover:bg-red-500/40 rounded-lg text-red-400 hover:text-red-300 transition-colors"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-      </div>
-
-      <h3 className="text-lg font-bold text-white mb-3 line-clamp-2">
-        {note.title}
-      </h3>
-
-      <p className="text-white/70 text-sm mb-4 line-clamp-3">{note.content}</p>
-
-      {note.tags.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4">
-          {note.tags.slice(0, 3).map((tag) => (
-            <span
-              key={tag}
-              className="px-2 py-1 bg-white/5 text-white/60 text-xs rounded-lg"
+    <motion.div 
+      layout
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      whileHover={{ y: -10, rotateX: 2, rotateY: 2 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="group relative bg-[#0A0A0A]/40 backdrop-blur-xl border border-white/5 rounded-[2.5rem] p-8 hover:border-blue-500/30 transition-all duration-700 cursor-pointer overflow-hidden flex flex-col h-full shadow-2xl hover:shadow-blue-500/10"
+      onClick={onEdit}
+    >
+      {/* Mesh Decor */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-white/[0.02] blur-3xl rounded-full -translate-y-12 translate-x-12 group-hover:bg-blue-500/[0.08] transition-all duration-700" />
+      <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/[0.01] blur-2xl rounded-full translate-y-12 -translate-x-12 group-hover:bg-purple-500/[0.05] transition-all duration-700" />
+      
+      <div className="relative z-10 flex flex-col h-full space-y-6">
+        <div className="flex items-start justify-between">
+          <div className="flex flex-col gap-3">
+            <div className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.2em] border w-fit transition-all duration-500 group-hover:border-white/20 ${getCategoryColor(note.category)}`}>
+              {note.category}
+            </div>
+            <h3 className="text-xl font-black text-white group-hover:text-blue-400 transition-colors uppercase tracking-tight line-clamp-2 italic">
+              {note.title}
+            </h3>
+          </div>
+          <div className="flex items-center gap-2">
+            {note.isPinned && (
+              <div className="p-2 bg-yellow-500/10 text-yellow-500 rounded-xl border border-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.2)]">
+                <Star size={14} fill="currentColor" className="animate-pulse" />
+              </div>
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="p-3 bg-white/5 text-white/20 hover:bg-red-500/10 hover:text-red-500 rounded-xl border border-white/5 opacity-0 group-hover:opacity-100 transition-all active:scale-90"
             >
-              #{tag}
-            </span>
-          ))}
-          {note.tags.length > 3 && (
-            <span className="px-2 py-1 bg-white/5 text-white/60 text-xs rounded-lg">
-              +{note.tags.length - 3} more
-            </span>
-          )}
+              <Trash2 size={14} />
+            </button>
+          </div>
         </div>
-      )}
 
-      <div className="flex items-center justify-between text-xs text-white/40">
-        <div className="flex items-center gap-1">
-          <Clock size={12} />
-          {new Date(note.updatedAt).toLocaleDateString()}
+        <p className="text-white/40 text-[11px] leading-relaxed font-medium line-clamp-4 flex-1 italic group-hover:text-white/60 transition-colors duration-500">
+          "{note.content}"
+        </p>
+
+        <div className="pt-6 border-t border-white/5 flex flex-col gap-5">
+          <div className="flex flex-wrap gap-2">
+            {note.tags.map((tag, i) => (
+              <div key={i} className="flex items-center gap-1.5 px-3 py-1 bg-white/[0.02] border border-white/5 rounded-lg text-[9px] font-black text-white/30 uppercase tracking-widest group-hover:border-blue-500/20 group-hover:text-blue-400 group-hover:bg-blue-500/5 transition-all">
+                <Tag size={8} />
+                {tag}
+              </div>
+            ))}
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-white/20 group-hover:text-white/40 transition-colors">
+                <Clock size={12} />
+                <span className="text-[9px] font-black uppercase tracking-widest">
+                  {new Date(note.updatedAt).toLocaleDateString(undefined, {
+                    month: 'short', day: 'numeric', year: 'numeric'
+                  })}
+                </span>
+              </div>
+              <div className="w-px h-3 bg-white/5" />
+              <div className="flex items-center gap-2 text-white/10 group-hover:text-white/30 transition-colors">
+                <BarChart3 size={12} />
+                <span className="text-[9px] font-black uppercase tracking-widest">{note.content.length} SIG</span>
+              </div>
+            </div>
+            <div className="w-2 h-2 rounded-full bg-white/5 group-hover:bg-blue-500 group-hover:shadow-[0_0_10px_rgba(59,130,246,0.8)] transition-all duration-500" />
+          </div>
         </div>
-        <div>{note.content.length} chars</div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -381,11 +521,19 @@ function NoteEditor({
     isPinned: note?.isPinned || false,
   });
 
+  // Body scroll lock
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.title.trim() || !formData.content.trim()) {
-      alert("Please fill in title and content");
+      toast.error("Please fill in title and content");
       return;
     }
 
@@ -416,128 +564,141 @@ function NoteEditor({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#0A0A0A] border border-white/10 rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
-          <h3 className="text-xl font-bold text-white">
-            {note ? "Edit Note" : "Create New Note"}
-          </h3>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <Plus size={20} className="text-white/60 rotate-45" />
-          </button>
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4 text-white">
+      {/* Background Decor */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/10 blur-[150px] -z-10" />
+      </div>
+
+      <div className="bg-[#0A0A0A]/90 border border-white/5 rounded-[3.5rem] p-10 w-full max-w-5xl shadow-3xl relative overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Modal Grain Effect */}
+        <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+        
+        {/* Background Decor */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-500/10 blur-[150px] -z-10" />
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="flex flex-col flex-1 overflow-hidden"
-        >
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-white/60 mb-2">
-                  Title *
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-white/30"
-                  placeholder="Enter note title..."
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-white/60 mb-2">
-                  Category
-                </label>
-                <select
-                  value={formData.category}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      category: e.target.value as any,
-                    })
-                  }
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-white/30"
-                >
-                  <option value="general">General</option>
-                  <option value="trading">Trading</option>
-                  <option value="analysis">Analysis</option>
-                  <option value="strategy">Strategy</option>
-                  <option value="journal">Journal</option>
-                </select>
-              </div>
-            </div>
-
+        <div className="relative z-10 flex flex-col flex-1 min-h-0">
+          <div className="flex items-center justify-between mb-10 border-b border-white/5 pb-8">
             <div>
-              <label className="block text-sm font-medium text-white/60 mb-2">
-                Content *
-              </label>
-              <textarea
-                value={formData.content}
-                onChange={(e) =>
-                  setFormData({ ...formData, content: e.target.value })
-                }
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-white/30 resize-none"
-                rows={12}
-                placeholder="Write your note content here..."
-                required
-              />
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">Intelligence Configuration</span>
+              </div>
+              <h2 className="text-3xl font-black tracking-tighter uppercase italic">
+                {note ? "Modify Ledger" : "Init Record"}
+              </h2>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-white/60 mb-2">
-                Tags (comma-separated)
-              </label>
-              <input
-                type="text"
-                value={formData.tags}
-                onChange={(e) =>
-                  setFormData({ ...formData, tags: e.target.value })
-                }
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-white/30"
-                placeholder="e.g., EURUSD, strategy, analysis"
-              />
-            </div>
-
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="isPinned"
-                checked={formData.isPinned}
-                onChange={(e) =>
-                  setFormData({ ...formData, isPinned: e.target.checked })
-                }
-                className="w-4 h-4 rounded border-white/20 bg-white/5 text-white focus:ring-white/20"
-              />
-              <label htmlFor="isPinned" className="text-sm text-white/60">
-                Pin this note to the top
-              </label>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 p-6 border-t border-white/10">
             <button
-              type="button"
               onClick={onClose}
-              className="px-6 py-3 text-white/60 hover:text-white transition-colors"
+              className="p-4 bg-white/5 hover:bg-white text-white/40 hover:text-black rounded-2xl border border-white/10 transition-all active:scale-95"
             >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-3 bg-white text-black rounded-xl font-bold hover:bg-gray-200 transition-colors"
-            >
-              {note ? "Update" : "Create"} Note
+              <Plus size={20} className="rotate-45" />
             </button>
           </div>
-        </form>
+
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar min-h-0 pb-10">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 p-2">
+                {/* Left Column: Metadata Mesh (5 cols) */}
+                <div className="lg:col-span-5 space-y-12">
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 block px-2">Signal Identifier</label>
+                    <input
+                      type="text"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      className="w-full px-8 py-6 bg-white/[0.03] border border-white/5 rounded-[2rem] text-white font-black uppercase italic tracking-tighter focus:bg-white/[0.06] focus:border-white/20 transition-all outline-none shadow-inner text-lg"
+                      placeholder="Identify record node..."
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-8">
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 block px-2">Intelligence Sector</label>
+                      <select
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
+                        className="w-full px-8 py-5 bg-white/[0.03] border border-white/5 rounded-2xl text-white font-black uppercase tracking-widest focus:bg-white/[0.06] focus:border-white/20 transition-all outline-none cursor-pointer appearance-none shadow-inner"
+                      >
+                        <option value="general">General Node</option>
+                        <option value="trading">Trading Signal</option>
+                        <option value="analysis">Deep Analysis</option>
+                        <option value="strategy">Strategy Blueprint</option>
+                        <option value="journal">Personal Journal</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 block px-2">Signal Fragments</label>
+                      <div className="relative">
+                        <Tag size={14} className="absolute left-6 top-1/2 -translate-y-1/2 text-white/20" />
+                        <input
+                          type="text"
+                          value={formData.tags}
+                          onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                          className="w-full pl-14 pr-8 py-5 bg-white/[0.03] border border-white/5 rounded-2xl text-white/60 font-medium focus:bg-white/[0.06] focus:border-white/20 transition-all outline-none shadow-inner"
+                          placeholder="Analysis, Edge, Review..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, isPinned: !formData.isPinned })}
+                      className={`flex items-center justify-between px-8 py-6 rounded-[2rem] border transition-all w-full group ${
+                        formData.isPinned 
+                          ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.1)]" 
+                          : "bg-white/[0.02] border-white/5 text-white/20 hover:text-white/40 hover:bg-white/[0.04]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <Star size={20} fill={formData.isPinned ? "currentColor" : "none"} className={formData.isPinned ? "animate-pulse" : ""} />
+                        <span className="text-[11px] font-black uppercase tracking-[0.3em]">Priority Ledger</span>
+                      </div>
+                      <div className={`w-2 h-2 rounded-full ${formData.isPinned ? "bg-yellow-500" : "bg-white/10"}`} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Right Column: Deep Insight Mesh (7 cols) */}
+                <div className="lg:col-span-7 flex flex-col space-y-6">
+                  <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 block px-2 italic">Neural Observation Protocol</label>
+                  <div className="flex-1 relative group h-full">
+                    <div className="absolute inset-0 bg-blue-500/5 blur-[50px] opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
+                    <textarea
+                      value={formData.content}
+                      onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                      className="w-full h-full min-h-[450px] px-10 py-10 bg-white/[0.02] border border-white/5 rounded-[3rem] text-white/80 font-medium italic leading-relaxed focus:bg-white/[0.04] focus:border-white/20 transition-all outline-none resize-none shadow-2xl relative z-10"
+                      placeholder="Record deep institutional market insights, psychological shifts, and tactical observations..."
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-6 pt-10 border-t border-white/5 mt-auto">
+              <button
+                type="submit"
+                className="flex-1 bg-white text-black py-7 px-10 rounded-2xl font-black text-xs uppercase tracking-[0.3em] hover:bg-gray-200 transition-all shadow-[0_20px_40px_rgba(255,255,255,0.1)] active:scale-95 flex items-center justify-center gap-3"
+              >
+                Commit Protocol
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-[0.5] bg-white/5 text-white/40 py-7 px-10 rounded-2xl font-black text-xs uppercase tracking-[0.3em] border border-white/5 hover:bg-white/[0.08] hover:text-white transition-all active:scale-95"
+              >
+                Abort Sync
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

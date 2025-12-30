@@ -4,11 +4,14 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   BarChart3,
   TrendingUp,
-  Settings,
   Maximize2,
   RefreshCw,
-  Clock,
   Globe,
+  Zap,
+  Plus,
+  X,
+  PlusCircle,
+  LayoutGrid
 } from "lucide-react";
 
 declare global {
@@ -20,231 +23,224 @@ declare global {
 export default function ChartPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedSymbol, setSelectedSymbol] = useState("EURUSD");
-  const [selectedTimeframe, setSelectedTimeframe] = useState("15");
-  const [theme, setTheme] = useState("dark");
-
-  const symbols = [
-    { symbol: "EURUSD", name: "EUR/USD" },
-    { symbol: "GBPUSD", name: "GBP/USD" },
-    { symbol: "USDJPY", name: "USD/JPY" },
-    { symbol: "AUDUSD", name: "AUD/USD" },
-    { symbol: "USDCAD", name: "USD/CAD" },
-    { symbol: "NZDUSD", name: "NZD/USD" },
-    { symbol: "USDCHF", name: "USD/CHF" },
-    { symbol: "XAUUSD", name: "Gold" },
-    { symbol: "BTCUSD", name: "Bitcoin" },
-  ];
-
-  const timeframes = [
-    { value: "1", label: "1m" },
-    { value: "5", label: "5m" },
-    { value: "15", label: "15m" },
-    { value: "30", label: "30m" },
-    { value: "60", label: "1H" },
-    { value: "240", label: "4H" },
-    { value: "D", label: "1D" },
-    { value: "W", label: "1W" },
-  ];
+  const [selectedSymbol, setSelectedSymbol] = useState("FX:EURUSD");
+  const [watchlist, setWatchlist] = useState<{symbol: string, name: string}[]>([]);
+  const [newSymbol, setNewSymbol] = useState("");
 
   useEffect(() => {
-    // Load TradingView script
+    const saved = localStorage.getItem("apex_watchlist");
+    if (saved) {
+      setWatchlist(JSON.parse(saved));
+    } else {
+      const initial = [
+        { symbol: "FX:EURUSD", name: "EUR/USD" },
+        { symbol: "FX:GBPUSD", name: "GBP/USD" },
+        { symbol: "OANDA:XAUUSD", name: "Gold" },
+        { symbol: "BITSTAMP:BTCUSD", name: "Bitcoin" },
+      ];
+      setWatchlist(initial);
+      localStorage.setItem("apex_watchlist", JSON.stringify(initial));
+    }
+  }, []);
+
+  const addToWatchlist = () => {
+    if (!newSymbol.trim()) return;
+    const symbol = newSymbol.toUpperCase();
+    const formatted = symbol.includes(":") ? symbol : `FX:${symbol}`;
+    const entry = { symbol: formatted, name: symbol };
+    const updated = [...watchlist, entry];
+    setWatchlist(updated);
+    localStorage.setItem("apex_watchlist", JSON.stringify(updated));
+    setNewSymbol("");
+  };
+
+  const removeFromWatchlist = (e: React.MouseEvent, symbol: string) => {
+    e.stopPropagation();
+    const updated = watchlist.filter(s => s.symbol !== symbol);
+    setWatchlist(updated);
+    localStorage.setItem("apex_watchlist", JSON.stringify(updated));
+    if (selectedSymbol === symbol && updated.length > 0) {
+      setSelectedSymbol(updated[0].symbol);
+    }
+  };
+
+  useEffect(() => {
     const script = document.createElement("script");
     script.src = "https://s3.tradingview.com/tv.js";
     script.async = true;
-    script.onload = () => initializeChart();
+    script.onload = () => {
+      initializeChart();
+      initializeCrossRates();
+    };
     document.head.appendChild(script);
 
     return () => {
-      if (document.head.contains(script)) {
-        document.head.removeChild(script);
-      }
+      if (document.head.contains(script)) document.head.removeChild(script);
     };
   }, []);
 
   useEffect(() => {
     if (window.TradingView && containerRef.current) {
       initializeChart();
+      initializeCrossRates();
     }
-  }, [selectedSymbol, selectedTimeframe, theme]);
+  }, [selectedSymbol]);
+
+  const initializeCrossRates = () => {
+    const container = document.getElementById("tv-cross-rates");
+    if (!container) return;
+    container.innerHTML = "";
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-forex-cross-rates.js";
+    script.async = true;
+    script.innerHTML = JSON.stringify({
+      "width": "100%",
+      "height": "100%",
+      "currencies": [
+        "EUR",
+        "USD",
+        "JPY",
+        "GBP",
+        "CHF",
+        "AUD",
+        "CAD",
+        "NZD"
+      ],
+      "isTransparent": true,
+      "colorTheme": "dark",
+      "locale": "en"
+    });
+    container.appendChild(script);
+  };
 
   const initializeChart = () => {
     if (!window.TradingView || !containerRef.current) return;
 
     setIsLoading(true);
-
-    // Clear existing chart
-    if (containerRef.current) {
-      containerRef.current.innerHTML = "";
-    }
-
-    // Determine symbol format based on type
-    let symbolFormat = selectedSymbol;
-    if (selectedSymbol === "XAUUSD") {
-      symbolFormat = "TVC:GOLD";
-    } else if (selectedSymbol === "BTCUSD") {
-      symbolFormat = "BITSTAMP:BTCUSD";
-    } else {
-      symbolFormat = `FX_IDC:${selectedSymbol}`;
-    }
+    containerRef.current.innerHTML = "";
 
     try {
       new window.TradingView.widget({
         autosize: true,
-        symbol: symbolFormat,
-        interval: selectedTimeframe,
+        symbol: selectedSymbol,
+        interval: "15",
         timezone: "Etc/UTC",
-        theme: theme === "dark" ? "dark" : "light",
+        theme: "dark",
         style: "1",
         locale: "en",
-        toolbar_bg: theme === "dark" ? "#0A0A0A" : "#ffffff",
+        toolbar_bg: "#050505",
         enable_publishing: false,
         hide_top_toolbar: false,
         hide_legend: false,
-        save_image: false,
-        container_id: "tradingview_chart",
+        save_image: true,
+        container_id: "tradingview_advanced_chart",
+        allow_symbol_change: true,
+        details: true,
+        hotlist: true,
+        calendar: true,
+        show_popup_button: true,
+        popup_width: "1000",
+        popup_height: "650",
         studies: [
           "MASimple@tv-basicstudies",
           "RSI@tv-basicstudies",
           "MACD@tv-basicstudies",
         ],
-        overrides:
-          theme === "dark"
-            ? {
-                "paneProperties.background": "#0A0A0A",
-                "paneProperties.vertGridProperties.color": "#1a1a1a",
-                "paneProperties.horzGridProperties.color": "#1a1a1a",
-                "symbolWatermarkProperties.transparency": 90,
-                "scalesProperties.textColor": "#AAA",
-                "mainSeriesProperties.candleStyle.upColor": "#10b981",
-                "mainSeriesProperties.candleStyle.downColor": "#ef4444",
-                "mainSeriesProperties.candleStyle.drawWick": true,
-                "mainSeriesProperties.candleStyle.drawBorder": true,
-                "mainSeriesProperties.candleStyle.borderUpColor": "#10b981",
-                "mainSeriesProperties.candleStyle.borderDownColor": "#ef4444",
-                "mainSeriesProperties.candleStyle.wickUpColor": "#10b981",
-                "mainSeriesProperties.candleStyle.wickDownColor": "#ef4444",
-              }
-            : {},
-        onChartReady: () => {
-          console.log("TradingView chart loaded successfully");
-          setIsLoading(false);
+        overrides: {
+          "paneProperties.background": "#050505",
+          "paneProperties.vertGridProperties.color": "#111111",
+          "paneProperties.horzGridProperties.color": "#111111",
+          "symbolWatermarkProperties.transparency": 90,
+          "scalesProperties.textColor": "#888",
+          "mainSeriesProperties.candleStyle.upColor": "#10b981",
+          "mainSeriesProperties.candleStyle.downColor": "#ef4444",
         },
       });
+      setIsLoading(false);
     } catch (error) {
-      console.error("Failed to initialize TradingView chart:", error);
+      console.error("TradingView Initialization Failure:", error);
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="h-screen bg-black text-white flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#0A0A0A]">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <BarChart3 size={24} className="text-white" />
-            <h1 className="text-xl font-bold">Trading Charts</h1>
+    <div className="min-h-screen flex flex-col bg-black text-white relative w-full max-w-[1700px] mx-auto overflow-y-auto scrollbar-none no-scrollbar pb-12">
+      {/* INSTITUTIONAL CHART HEADER */}
+      <header className="flex items-center justify-between px-6 py-3 bg-[#0A0A0A] border-b border-white/5 flex-shrink-0">
+        <div className="flex items-center gap-5">
+          <div className="p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20">
+            <LayoutGrid size={18} className="text-blue-400" />
           </div>
-
-          {/* Symbol Selector */}
-          <select
-            value={selectedSymbol}
-            onChange={(e) => setSelectedSymbol(e.target.value)}
-            className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:border-white/40"
-          >
-            {symbols.map((sym) => (
-              <option key={sym.symbol} value={sym.symbol} className="bg-black">
-                {sym.name}
-              </option>
-            ))}
-          </select>
-
-          {/* Timeframe Selector */}
-          <div className="flex gap-1 bg-white/5 rounded-lg p-1">
-            {timeframes.map((tf) => (
-              <button
-                key={tf.value}
-                onClick={() => setSelectedTimeframe(tf.value)}
-                className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                  selectedTimeframe === tf.value
-                    ? "bg-white text-black"
-                    : "text-white/60 hover:text-white hover:bg-white/10"
-                }`}
-              >
-                {tf.label}
-              </button>
-            ))}
+          <div>
+            <h1 className="text-xl font-black text-white tracking-widest uppercase italic">Command Terminal</h1>
+            <p className="text-[9px] text-white/30 font-mono uppercase tracking-[0.2em] mt-0.5">Unified Intelligence Mesh</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Theme Toggle */}
-          <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-            title="Toggle Theme"
-          >
-            <Settings size={16} />
-          </button>
-
-          {/* Refresh */}
           <button
             onClick={() => initializeChart()}
-            className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-            title="Refresh Chart"
+            className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-colors text-white/40 hover:text-white"
+            title="Refresh Terminal"
           >
             <RefreshCw size={16} />
           </button>
-
-          {/* Fullscreen */}
           <button
             onClick={() => document.documentElement.requestFullscreen()}
-            className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
-            title="Fullscreen"
+            className="p-2.5 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 transition-colors text-white/40 hover:text-white"
+            title="Fullscreen Mode"
           >
             <Maximize2 size={16} />
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Chart Container */}
-      <div className="flex-1 relative">
-        {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#0A0A0A] z-10">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-              <p className="text-white/60 text-sm">Loading chart...</p>
+      {/* VERTICAL GRID STACK */}
+      <div className="flex-1 flex flex-col bg-[#050505] space-y-12">
+        {/* UPPER QUADRANT: ADVANCED CHART (FULL TERMINAL RESOLUTION) */}
+        <main className="h-[85vh] min-h-[700px] relative overflow-hidden border-b border-white/5 shadow-2xl">
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-[#050505] z-30">
+              <div className="flex flex-col items-center gap-4">
+                <Zap className="text-blue-500 animate-pulse" size={32} />
+                <p className="text-[10px] font-mono text-white/20 uppercase tracking-[0.5em]">Synchronizing Market Data...</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+          <div id="tradingview_advanced_chart" ref={containerRef} className="w-full h-full" />
+        </main>
 
-        <div
-          id="tradingview_chart"
-          ref={containerRef}
-          className="w-full h-full"
-        />
+        {/* LOWER QUADRANT: CORRELATION MESH */}
+        <section className="h-[600px] flex flex-col px-6">
+          <div className="py-4 border-b border-white/5 flex items-center justify-between flex-shrink-0 mb-6 font-bold group">
+             <div className="flex items-center gap-3">
+               <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+               <h2 className="text-xs font-black text-white/40 uppercase tracking-[0.4em] group-hover:text-white/60 transition-all">Global Correlation Mesh / Cross Rates</h2>
+             </div>
+             <Globe size={14} className="text-white/10 group-hover:text-blue-400 transition-all" />
+          </div>
+          <div className="flex-1 rounded-[2.5rem] bg-white/[0.02] border border-white/10 p-6 overflow-hidden hover:bg-white/[0.04] transition-all">
+            <div id="tv-cross-rates" className="w-full h-full" />
+          </div>
+        </section>
       </div>
 
-      {/* Quick Info Bar */}
-      <div className="flex items-center justify-between p-3 bg-[#0A0A0A] border-t border-white/10 text-xs">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Clock size={14} className="text-white/40" />
-            <span className="text-white/60">
-              NPT: {new Date().toLocaleTimeString()}
-            </span>
+      {/* LOWER DATA BAND */}
+      <footer className="flex items-center justify-between p-3 px-6 bg-black border-t border-white/5 text-[9px] font-black uppercase tracking-[0.2em]">
+        <div className="flex items-center gap-8">
+          <div className="flex items-center gap-2 text-white/40">
+            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+            <span>Feed: WebSocket Active</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Globe size={14} className="text-white/40" />
-            <span className="text-white/60">Market: {selectedSymbol}</span>
+          <div className="flex items-center gap-2 text-white/40">
+            <Globe size={11} />
+            <span>Node ID: {selectedSymbol}</span>
           </div>
         </div>
-
-        <div className="flex items-center gap-4 text-white/60">
-          <span>Powered by TradingView</span>
+        <div className="flex items-center gap-4 text-white/10 italic">
+          Apex Intelligence Collective v5.0.0
         </div>
-      </div>
+      </footer>
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { StickyNote, Plus, Edit3, Trash2, Pin, X } from "lucide-react";
+import Link from "next/link";
 
 interface QuickNotesWidgetProps {
   className?: string;
@@ -28,6 +29,14 @@ export default function QuickNotesWidget({
 
   useEffect(() => {
     fetchNotes();
+
+    // Listen for global note creation events
+    const handleNoteCreated = () => fetchNotes();
+    window.addEventListener("noteCreated", handleNoteCreated);
+
+    return () => {
+      window.removeEventListener("noteCreated", handleNoteCreated);
+    };
   }, []);
 
   // Create quick note
@@ -92,164 +101,138 @@ export default function QuickNotesWidget({
 
   return (
     <>
-      <div className={`h-full ${className}`}>
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-lg font-bold text-white">Quick Notes</h3>
-            <p className="text-xs text-white/60 font-mono uppercase tracking-widest">
-              Trading Insights
-            </p>
-          </div>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <Plus size={16} className="text-white/60" />
-          </button>
+      <div className={`h-full flex flex-col ${className} group/notes`}>
+        {/* Quick Note Input Matrix */}
+        <div className="mb-8 relative">
+           <div className={`transition-all duration-500 overflow-hidden ${showForm ? "h-40 opacity-100 mb-6" : "h-0 opacity-0 mb-0"}`}>
+             <form onSubmit={handleCreateNote} className="space-y-4">
+               <textarea
+                 value={noteContent}
+                 onChange={(e) => setNoteContent(e.target.value)}
+                 placeholder="Write a note..."
+                 className="w-full h-24 px-4 py-4 bg-white/[0.03] border border-white/10 rounded-2xl text-white placeholder-white/20 text-xs font-bold uppercase tracking-wider resize-none focus:outline-none focus:border-white/30 focus:bg-white/[0.05] transition-all"
+                 autoFocus
+               />
+               <div className="flex justify-end gap-4">
+                 <button
+                   type="button"
+                   onClick={() => {
+                     setShowForm(false);
+                     setNoteContent("");
+                   }}
+                   className="px-4 py-2 text-[10px] font-bold text-white/40 hover:text-white uppercase tracking-wider italic transition-all"
+                 >
+                   Cancel
+                 </button>
+                 <button
+                   type="submit"
+                   className="px-6 py-2 bg-white text-black rounded-xl text-[10px] font-bold uppercase tracking-wider hover:bg-blue-500 hover:text-white transition-all shadow-2xl"
+                 >
+                   Save Note
+                 </button>
+               </div>
+             </form>
+           </div>
+           
+           {!showForm && (
+             <button
+               onClick={() => setShowForm(true)}
+               className="w-full py-4 border border-dashed border-white/10 rounded-2xl flex items-center justify-center gap-3 text-white/40 hover:text-white hover:bg-white/[0.02] hover:border-white/20 transition-all duration-700 group/add"
+             >
+               <Plus size={14} className="group-hover/add:rotate-90 transition-transform duration-500" />
+               <span className="text-[10px] font-bold uppercase tracking-wider italic">Create Note</span>
+             </button>
+           )}
         </div>
 
-        {/* Quick Note Form */}
-        {showForm && (
-          <form onSubmit={handleCreateNote} className="mb-4 space-y-3">
-            <textarea
-              value={noteContent}
-              onChange={(e) => setNoteContent(e.target.value)}
-              placeholder="Quick trading note..."
-              className="w-full h-20 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 text-sm resize-none focus:outline-none focus:border-white/30"
-              autoFocus
-            />
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowForm(false);
-                  setNoteContent("");
-                }}
-                className="px-3 py-1 text-xs text-white/60 hover:text-white transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-1 bg-white text-black rounded text-xs font-medium hover:bg-gray-200 transition-colors"
-              >
-                Save
-              </button>
-            </div>
-          </form>
-        )}
-
         {/* Recent Notes */}
-        <div className="space-y-3 max-h-[300px] overflow-y-auto">
+        <div className="flex-1 space-y-4 overflow-y-auto pr-2 scrollbar-hide">
           {notes.length > 0 ? (
             notes.map((note) => (
               <div
                 key={note._id}
-                className="group relative p-3 rounded-lg hover:bg-white/10 transition-colors cursor-pointer overflow-hidden"
-                style={{
-                  backgroundColor: note.color,
-                  transform: "rotate(0.5deg)",
-                }}
+                className="group/note relative p-6 bg-white/[0.02] border border-white/5 rounded-[2rem] hover:bg-white/[0.04] hover:border-white/10 transition-all duration-500 overflow-hidden"
               >
-                {/* Folded corner effect */}
-                <div
-                  className="absolute top-0 right-0 w-4 h-4 transform rotate-45 translate-x-2 -translate-y-2"
-                  style={{
-                    backgroundColor: note.color,
-                    filter: "brightness(0.8)",
-                    clipPath: "polygon(0 100%, 100% 0, 100% 100%)",
-                  }}
-                />
-
-                {/* Pin indicator */}
-                {note.isPinned && (
-                  <div className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
-                    <Pin size={8} className="text-white" />
-                  </div>
-                )}
-
-                <div className="flex items-start justify-between gap-2 relative z-10">
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-medium text-gray-800 truncate">
-                      {note.title}
-                    </h4>
-                    <p className="text-xs text-gray-700 line-clamp-2 mt-1">
-                      {note.content}
-                    </p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs text-gray-600">
-                        {new Date(note.createdAt).toLocaleDateString()}
-                      </span>
-                      {note.tags && note.tags.length > 0 && (
-                        <span className="text-xs text-gray-600">
-                          #{note.tags[0]}
-                        </span>
-                      )}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/[0.01] blur-2xl pointer-events-none" />
+                
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                       <div className={`w-1 h-1 rounded-full ${note.isPinned ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" : "bg-white/10"}`} />
+                       <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider italic">
+                         {new Date(note.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                       </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 opacity-0 group-hover/note:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleTogglePin(note);
+                        }}
+                        className={`p-1.5 rounded-lg border transition-all ${note.isPinned ? "bg-rose-500/10 border-rose-500/20 text-rose-500" : "bg-white/5 border-white/10 text-white/20 hover:text-white hover:border-white/20"}`}
+                      >
+                        <Pin size={10} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirmNote(note);
+                        }}
+                        className="p-1.5 bg-white/5 border border-white/10 rounded-lg text-white/20 hover:text-rose-500 hover:border-rose-500/20 hover:bg-rose-500/10 transition-all"
+                      >
+                        <Trash2 size={10} />
+                      </button>
                     </div>
                   </div>
 
-                  {/* Hover Actions */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleTogglePin(note);
-                      }}
-                      className="p-1 bg-white/80 rounded shadow hover:bg-white transition-colors"
-                      title={note.isPinned ? "Unpin" : "Pin"}
-                    >
-                      <Pin
-                        size={12}
-                        className={
-                          note.isPinned ? "text-red-500" : "text-gray-600"
-                        }
-                      />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteConfirmNote(note);
-                      }}
-                      className="p-1 bg-white/80 rounded shadow hover:bg-white transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 size={12} className="text-red-500" />
-                    </button>
+                  <p className="text-xs text-white/70 font-medium leading-relaxed italic mb-4 line-clamp-3 group-hover/note:line-clamp-none transition-all">
+                    "{note.content}"
+                  </p>
+
+                  <div className="flex items-center gap-4 pt-4 border-t border-white/5">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-white/[0.03] border border-white/5 rounded-full">
+                       <span className="text-[9px] font-bold text-white/30 uppercase tracking-wider italic">Trading</span>
+                    </div>
+                    {note.tags?.length > 0 && (
+                      <span className="text-[9px] font-bold text-blue-500/40 uppercase tracking-wider italic">#{note.tags[0]}</span>
+                    )}
                   </div>
                 </div>
               </div>
             ))
           ) : (
-            <div className="text-center py-6">
-              <StickyNote size={32} className="text-white/20 mx-auto mb-2" />
-              <p className="text-xs text-white/40">No notes yet</p>
-              <button
-                onClick={() => setShowForm(true)}
-                className="text-xs text-white/60 hover:text-white transition-colors mt-1"
-              >
-                Create your first note
-              </button>
+            <div className="flex flex-col items-center justify-center py-16 px-8 border border-dashed border-white/5 rounded-[3rem] bg-white/[0.01]">
+              <div className="p-4 bg-white/[0.03] rounded-2xl mb-6">
+                 <StickyNote size={24} className="text-white/10" />
+              </div>
+              <div className="text-center space-y-2">
+                 <p className="text-xs font-bold text-white/30 uppercase tracking-widest italic">No Notes Found</p>
+                 <p className="text-[10px] font-bold text-white/20 uppercase tracking-wider">Create a new note to get started.</p>
+              </div>
             </div>
           )}
         </div>
 
-        {/* View All Link */}
-        {notes.length > 0 && (
-          <div className="mt-4 pt-3 border-t border-white/10">
-            <a
-              href="/notebook"
-              className="flex items-center justify-center gap-2 text-xs text-white/60 hover:text-white transition-colors"
-            >
-              <Edit3 size={12} />
-              View All Notes
-            </a>
-          </div>
-        )}
+        {/* Global Archive Link */}
+        <div className="mt-8 pt-6 border-t border-white/5">
+          <Link
+            href="/notebook"
+            className="flex items-center justify-center gap-4 group/link"
+          >
+             <div className="h-px flex-1 bg-white/5 group-hover/link:bg-blue-500/20 transition-all" />
+             <div className="flex items-center gap-3">
+                <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest group-hover/link:text-white transition-all italic">View All Notes</span>
+                <Edit3 size={12} className="text-white/20 group-hover/link:text-blue-500 transition-all" />
+             </div>
+             <div className="h-px flex-1 bg-white/5 group-hover/link:bg-blue-500/20 transition-all" />
+          </Link>
+        </div>
       </div>
 
       {/* Delete Confirmation Dialog */}
       {deleteConfirmNote && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 text-left">
           <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6 w-full max-w-md">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-red-500/10 rounded-lg">
@@ -268,7 +251,7 @@ export default function QuickNotesWidget({
               <button
                 onClick={() => setDeleteConfirmNote(null)}
                 className="px-4 py-2 text-white/60 hover:text-white transition-colors"
-              >
+               >
                 Cancel
               </button>
               <button

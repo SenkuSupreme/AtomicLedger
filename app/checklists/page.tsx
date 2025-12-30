@@ -14,8 +14,16 @@ import {
   Clock,
   Star,
   Search,
+  Globe,
+  Database,
+  Cpu,
+  Shield,
+  Zap,
+  Activity
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
+import { toast } from "sonner";
 
 interface ChecklistItem {
   id: string;
@@ -40,20 +48,12 @@ export default function ChecklistsPage() {
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingChecklist, setEditingChecklist] = useState<Checklist | null>(
-    null
-  );
-  const [activeChecklist, setActiveChecklist] = useState<Checklist | null>(
-    null
-  );
+  const [editingChecklist, setEditingChecklist] = useState<Checklist | null>(null);
+  const [activeChecklist, setActiveChecklist] = useState<Checklist | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStrategy, setFilterStrategy] = useState("all");
-  const [deleteDialog, setDeleteDialog] = useState<{
-    isOpen: boolean;
-    checklist: Checklist | null;
-  }>({ isOpen: false, checklist: null });
+  const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; checklist: Checklist | null }>({ isOpen: false, checklist: null });
 
-  // Fetch checklists
   const fetchChecklists = async () => {
     try {
       setLoading(true);
@@ -71,244 +71,202 @@ export default function ChecklistsPage() {
     fetchChecklists();
   }, []);
 
-  // Filter checklists
   const filteredChecklists = checklists.filter((checklist) => {
-    const matchesSearch =
-      checklist.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      checklist.strategy.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStrategy =
-      filterStrategy === "all" || checklist.strategy === filterStrategy;
+    const matchesSearch = checklist.name.toLowerCase().includes(searchTerm.toLowerCase()) || checklist.strategy.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStrategy = filterStrategy === "all" || checklist.strategy === filterStrategy;
     return matchesSearch && matchesStrategy;
   });
 
-  // Get unique strategies
   const strategies = [...new Set(checklists.map((c) => c.strategy))];
 
   if (loading) {
     return (
-      <div className="flex h-[80vh] w-full items-center justify-center text-white/60 font-mono text-xs uppercase tracking-[0.3em] animate-pulse">
-        Loading Checklists...
+      <div className="flex h-[80vh] w-full items-center justify-center text-white/20 font-black text-xs uppercase tracking-[0.5em] animate-pulse">
+        Synchronizing Verification protocols...
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 font-sans text-white">
-      {/* Header */}
-      <div className="flex items-end justify-between border-b border-white/10 pb-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-1">
-            Trading Checklists
+    <div className="space-y-12 text-white font-sans relative min-h-screen pb-20 overflow-hidden px-4 md:px-8">
+      {/* Institutional Background Mesh */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+        <div className="absolute top-0 right-0 w-[1000px] h-[1000px] bg-emerald-500/[0.03] blur-[150px] -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-[1000px] h-[1000px] bg-sky-500/[0.03] blur-[150px] translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+      </div>
+
+      {/* Header Mesh */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-white/5 pb-10 relative z-10 gap-8">
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+               <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+               <span className="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-400">Validator Node 21 Live</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1 bg-white/[0.03] border border-white/5 rounded-full text-white/20">
+               <Shield size={10} className="text-emerald-500/50" />
+               <span className="text-[9px] font-black uppercase tracking-[0.3em]">Protocol Verification: Active</span>
+            </div>
+          </div>
+          <h1 className="text-6xl font-black tracking-tighter italic uppercase bg-gradient-to-br from-white to-white/40 bg-clip-text text-transparent leading-none">
+            Checklist Matrix
           </h1>
-          <p className="text-white/70 text-sm font-medium">
-            Pre-trade validation checklists for different strategies
+          <p className="text-white/30 text-sm font-medium italic max-w-xl leading-relaxed">
+            "Institutional pre-trade verification protocols. Decouple emotion from execution through algorithmic validation and tactical checklists."
           </p>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6 relative z-10">
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-xl font-bold hover:bg-gray-200 transition-all shadow-xl shadow-white/5"
+            className="group relative flex items-center gap-4 bg-white text-black hover:bg-emerald-500 hover:text-white px-10 py-5 rounded-[2rem] font-black text-[11px] uppercase tracking-[0.3em] transition-all shadow-2xl shadow-white/5 active:scale-95 overflow-hidden border border-white/10"
           >
-            <Plus size={18} />
-            Create Checklist
+            <div className="absolute inset-0 bg-black/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+            <Plus size={18} className="relative z-10" />
+            <span className="relative z-10">Initialize Protocol</span>
           </button>
         </div>
       </div>
 
-      {/* Search and Filter */}
-      <div className="flex items-center gap-4 mb-6">
-        <div className="relative flex-1 max-w-md">
+      {/* Intelligence Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative z-10">
+        {[
+          { icon: <CheckSquare size={18} />, label: "Checklists", value: checklists.length, color: "blue" },
+          { icon: <Target size={18} />, label: "Active Nodes", value: checklists.filter(c => c.isActive).length, color: "emerald" },
+          { icon: <BarChart3 size={18} />, label: "Avg Completion", value: `${checklists.length > 0 ? Math.round(checklists.reduce((acc, c) => acc + c.completionRate, 0) / checklists.length) : 0}%`, color: "purple" },
+          { icon: <Activity size={18} />, label: "Total Syncs", value: checklists.reduce((acc, c) => acc + c.timesUsed, 0), color: "orange" },
+        ].map((stat, i) => (
+          <div key={i} className="bg-white/[0.02] backdrop-blur-md border border-white/5 rounded-[2.5rem] p-8 group hover:bg-white/[0.04] transition-all duration-500 relative overflow-hidden">
+             <div className="flex items-center justify-between mb-8 relative z-10">
+                <div className="p-3 bg-white/[0.05] border border-white/10 rounded-2xl text-white/40 group-hover:bg-white group-hover:text-black transition-all">
+                   {stat.icon}
+                </div>
+                <span className="text-3xl font-black italic tracking-tighter text-white/80 group-hover:text-white transition-colors">{stat.value}</span>
+             </div>
+             <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] italic">
+                {stat.label}
+             </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Institutional Filter Matrix */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+        <div className="relative group">
           <Search
             size={18}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40"
+            className="absolute left-6 top-1/2 -translate-y-1/2 text-white/10 group-focus-within:text-emerald-500 transition-colors"
           />
           <input
             type="text"
-            placeholder="Search checklists..."
+            placeholder="Scan protocols..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-white/30"
+            className="w-full pl-16 pr-8 py-5 bg-black/40 border border-white/5 rounded-[2rem] text-white placeholder:text-white/10 text-[11px] font-black uppercase tracking-[0.3em] focus:border-emerald-500/30 focus:outline-none focus:bg-white/[0.04] transition-all backdrop-blur-md shadow-inner italic"
           />
         </div>
 
         <select
           value={filterStrategy}
           onChange={(e) => setFilterStrategy(e.target.value)}
-          className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-white/30"
+          className="px-8 py-5 bg-black/40 border border-white/5 rounded-[2rem] text-white text-[10px] font-black uppercase tracking-[0.2em] focus:border-emerald-500/30 focus:outline-none transition-all cursor-pointer hover:bg-white/[0.04] backdrop-blur-md"
         >
-          <option value="all">All Strategies</option>
-          {strategies.map((strategy) => (
-            <option key={strategy} value={strategy}>
-              {strategy}
-            </option>
-          ))}
+          <option value="all">All Strategy Sectors</option>
+          {strategies.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <CheckSquare size={20} className="text-blue-400" />
-            <span className="text-sm text-white/60">Total Checklists</span>
-          </div>
-          <div className="text-2xl font-bold text-white">
-            {checklists.length}
-          </div>
-        </div>
+      {/* Protocol Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 relative z-10">
+        <AnimatePresence mode="popLayout">
+          {filteredChecklists.map((checklist) => (
+            <motion.div
+              layout
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              key={checklist._id}
+              className="bg-[#0A0A0A]/40 backdrop-blur-xl border border-white/5 rounded-[3.5rem] p-10 group hover:border-emerald-500/30 transition-all duration-700 shadow-3xl flex flex-col relative overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.01] pointer-events-none" />
+              
+              <div className="flex items-start justify-between mb-8 relative z-10">
+                 <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-4">
+                       <span className="px-4 py-1.5 bg-emerald-500/10 text-emerald-400 text-[9px] font-black uppercase tracking-widest border border-emerald-500/20 rounded-full italic">
+                          {checklist.strategy} Sector
+                       </span>
+                       {checklist.isActive && <Star size={12} className="text-amber-500 fill-amber-500 animate-pulse" />}
+                    </div>
+                    <h3 className="text-3xl font-black text-white italic uppercase tracking-tighter group-hover:text-emerald-400 transition-colors">{checklist.name}</h3>
+                    <p className="text-[11px] font-medium text-white/30 italic mt-3 mb-8 line-clamp-2">"{checklist.description}"</p>
+                 </div>
+              </div>
 
-        <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <Target size={20} className="text-green-400" />
-            <span className="text-sm text-white/60">Active Checklists</span>
-          </div>
-          <div className="text-2xl font-bold text-white">
-            {checklists.filter((c) => c.isActive).length}
-          </div>
-        </div>
+              <div className="space-y-4 mb-10 relative z-10">
+                 {[
+                   { label: "Archived Items", value: checklist.items.length, icon: <Layers size={12} /> },
+                   { label: "Calibration Rate", value: `${checklist.completionRate}%`, icon: <Activity size={12} /> },
+                   { label: "Sync Cycles", value: checklist.timesUsed, icon: <RefreshCw size={12} /> },
+                 ].map((meta, i) => (
+                   <div key={i} className="flex justify-between items-center py-3 border-b border-white/5 group-hover:border-white/10 transition-colors">
+                      <div className="flex items-center gap-3">
+                         <div className="text-white/20">{meta.icon}</div>
+                         <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em] italic">{meta.label}</span>
+                      </div>
+                      <span className="text-sm font-black text-white italic tabular-nums">{meta.value}</span>
+                   </div>
+                 ))}
+              </div>
 
-        <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <BarChart3 size={20} className="text-purple-400" />
-            <span className="text-sm text-white/60">Avg Completion</span>
-          </div>
-          <div className="text-2xl font-bold text-white">
-            {checklists.length > 0
-              ? Math.round(
-                  checklists.reduce((acc, c) => acc + c.completionRate, 0) /
-                    checklists.length
-                )
-              : 0}
-            %
-          </div>
-        </div>
-
-        <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <Clock size={20} className="text-orange-400" />
-            <span className="text-sm text-white/60">Total Uses</span>
-          </div>
-          <div className="text-2xl font-bold text-white">
-            {checklists.reduce((acc, c) => acc + c.timesUsed, 0)}
-          </div>
-        </div>
+              <div className="mt-auto flex gap-3 relative z-10">
+                 <button
+                   onClick={() => setActiveChecklist(checklist)}
+                   className="flex-1 flex items-center justify-center gap-3 px-6 py-4 bg-white text-black rounded-[1.5rem] font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:bg-emerald-500 hover:text-white shadow-xl active:scale-95 italic"
+                 >
+                   <Play size={14} fill="currentColor" />
+                   Execute Sync
+                 </button>
+                 <div className="flex gap-2">
+                    <button onClick={() => setEditingChecklist(checklist)} className="p-4 bg-white/[0.03] border border-white/5 rounded-2xl text-white/20 hover:bg-white hover:text-black transition-all">
+                       <Edit3 size={16} />
+                    </button>
+                    <button onClick={() => setDeleteDialog({ isOpen: true, checklist })} className="p-4 bg-red-500/5 border border-red-500/10 rounded-2xl text-red-500/40 hover:bg-red-500 hover:text-white transition-all">
+                       <Trash2 size={16} />
+                    </button>
+                 </div>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
 
-      {/* Checklists Grid */}
-      {filteredChecklists.length === 0 ? (
-        <div className="text-center py-12">
-          <CheckSquare size={64} className="text-white/20 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-white mb-2">
-            No Checklists Found
-          </h3>
-          <p className="text-white/60 mb-6">
-            {searchTerm || filterStrategy !== "all"
-              ? "Try adjusting your search or filter criteria"
-              : "Create your first trading checklist to get started"}
+      {filteredChecklists.length === 0 && !loading && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="col-span-full py-40 text-center relative group overflow-hidden bg-white/[0.01] border border-dashed border-white/10 rounded-[4rem]"
+        >
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/5 blur-[120px] rounded-full" />
+          <CheckSquare size={64} className="text-white/20 mx-auto mb-10 relative z-10" />
+          <h3 className="text-4xl font-black text-white mb-6 uppercase tracking-tighter italic">Protocol Void</h3>
+          <p className="text-white/30 text-[11px] font-black uppercase tracking-[0.5em] mb-12 max-w-sm mx-auto italic leading-relaxed">
+            "Verification matrix is empty. No institutional checklists detected within chosen parameters."
           </p>
-          {!searchTerm && filterStrategy === "all" && (
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="px-6 py-3 bg-white text-black rounded-xl font-bold hover:bg-gray-200 transition-all"
-            >
-              Create Your First Checklist
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredChecklists.map((checklist) => (
-            <ChecklistCard
-              key={checklist._id}
-              checklist={checklist}
-              onEdit={() => setEditingChecklist(checklist)}
-              onDelete={() =>
-                setDeleteDialog({
-                  isOpen: true,
-                  checklist: checklist,
-                })
-              }
-              onDuplicate={() => duplicateChecklist(checklist)}
-              onUse={() => setActiveChecklist(checklist)}
-            />
-          ))}
-        </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="group relative inline-flex items-center gap-4 bg-white text-black hover:bg-emerald-500 hover:text-white px-12 py-6 rounded-[2.5rem] font-black text-[11px] uppercase tracking-[0.4em] transition-all shadow-2xl active:scale-95 overflow-hidden border border-white/10"
+          >
+            <div className="absolute inset-0 bg-black/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+            <Plus size={18} className="relative z-10" />
+            <span className="relative z-10">Initialize Alpha Protocol</span>
+          </button>
+        </motion.div>
       )}
 
-      {/* Create/Edit Modal */}
-      {(showCreateModal || editingChecklist) && (
-        <ChecklistModal
-          checklist={editingChecklist}
-          onClose={() => {
-            setShowCreateModal(false);
-            setEditingChecklist(null);
-          }}
-          onSave={(checklist) => {
-            if (editingChecklist) {
-              updateChecklist(checklist);
-            } else {
-              createChecklist(checklist);
-            }
-            setShowCreateModal(false);
-            setEditingChecklist(null);
-          }}
-        />
-      )}
-
-      {/* Active Checklist Modal */}
-      {activeChecklist && (
-        <ActiveChecklistModal
-          checklist={activeChecklist}
-          onClose={() => setActiveChecklist(null)}
-          onComplete={async (completedItems) => {
-            try {
-              // Update checklist usage statistics
-              const completedCount = completedItems.filter(
-                (item) => item.completed
-              ).length;
-              const completionRate = Math.round(
-                (completedCount / completedItems.length) * 100
-              );
-
-              const response = await fetch(
-                `/api/checklists/${activeChecklist._id}`,
-                {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    timesUsed: activeChecklist.timesUsed + 1,
-                    completionRate: Math.round(
-                      (activeChecklist.completionRate *
-                        activeChecklist.timesUsed +
-                        completionRate) /
-                        (activeChecklist.timesUsed + 1)
-                    ),
-                  }),
-                }
-              );
-
-              if (response.ok) {
-                await fetchChecklists(); // Refresh the list
-                setActiveChecklist(null);
-
-                // Show success message
-                const successMessage =
-                  completionRate === 100
-                    ? "Checklist completed successfully! 🎉"
-                    : `Checklist completed with ${completionRate}% completion rate.`;
-
-                // You can add a toast notification here if you have one
-                console.log(successMessage);
-              }
-            } catch (error) {
-              console.error("Failed to update checklist:", error);
-            }
-          }}
-        />
-      )}
-
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation */}
       <DeleteConfirmDialog
         isOpen={deleteDialog.isOpen}
         onClose={() => setDeleteDialog({ isOpen: false, checklist: null })}
@@ -317,48 +275,15 @@ export default function ChecklistsPage() {
             deleteChecklist(deleteDialog.checklist._id);
           }
         }}
-        title="Delete Checklist"
-        message={`Are you sure you want to delete "${deleteDialog.checklist?.name}"? This action cannot be undone.`}
+        title="Protocol Redaction"
+        message={`Are you sure you want to terminate "${deleteDialog.checklist?.name}"? Verification artifacts will be permanently purged from the archival matrix.`}
       />
     </div>
   );
 
-  // Helper functions
-  async function createChecklist(checklistData: any) {
-    try {
-      const res = await fetch("/api/checklists", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(checklistData),
-      });
-      if (res.ok) {
-        fetchChecklists();
-      }
-    } catch (error) {
-      console.error("Failed to create checklist:", error);
-    }
-  }
-
-  async function updateChecklist(checklistData: any) {
-    try {
-      const res = await fetch(`/api/checklists/${checklistData._id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(checklistData),
-      });
-      if (res.ok) {
-        fetchChecklists();
-      }
-    } catch (error) {
-      console.error("Failed to update checklist:", error);
-    }
-  }
-
   async function deleteChecklist(id: string) {
     try {
-      const res = await fetch(`/api/checklists/${id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(`/api/checklists/${id}`, { method: "DELETE" });
       if (res.ok) {
         fetchChecklists();
         setDeleteDialog({ isOpen: false, checklist: null });
@@ -367,417 +292,8 @@ export default function ChecklistsPage() {
       console.error("Failed to delete checklist:", error);
     }
   }
-
-  async function duplicateChecklist(checklist: Checklist) {
-    const duplicated = {
-      ...checklist,
-      name: `${checklist.name} (Copy)`,
-      _id: undefined,
-    };
-    createChecklist(duplicated);
-  }
 }
 
-// Checklist Card Component
-function ChecklistCard({
-  checklist,
-  onEdit,
-  onDelete,
-  onDuplicate,
-  onUse,
-}: {
-  checklist: Checklist;
-  onEdit: () => void;
-  onDelete: () => void;
-  onDuplicate: () => void;
-  onUse: () => void;
-}) {
-  return (
-    <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-6 hover:border-white/20 transition-all group">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <h3 className="text-lg font-bold text-white mb-1">
-            {checklist.name}
-          </h3>
-          <p className="text-sm text-white/60 mb-2">{checklist.description}</p>
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-lg">
-              {checklist.strategy}
-            </span>
-            {checklist.isActive && (
-              <Star size={14} className="text-yellow-400" />
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-3 mb-4">
-        <div className="flex justify-between text-sm">
-          <span className="text-white/60">Items</span>
-          <span className="text-white">{checklist.items.length}</span>
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-white/60">Completion Rate</span>
-          <span className="text-white">{checklist.completionRate}%</span>
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-white/60">Times Used</span>
-          <span className="text-white">{checklist.timesUsed}</span>
-        </div>
-      </div>
-
-      <div className="flex gap-2">
-        <button
-          onClick={onUse}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-white text-black rounded-lg font-medium hover:bg-gray-200 transition-colors"
-        >
-          <Play size={14} />
-          Use
-        </button>
-        <button
-          onClick={onEdit}
-          className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white/60 hover:text-white transition-colors"
-        >
-          <Edit3 size={14} />
-        </button>
-        <button
-          onClick={onDuplicate}
-          className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-white/60 hover:text-white transition-colors"
-        >
-          <Copy size={14} />
-        </button>
-        <button
-          onClick={onDelete}
-          className="p-2 bg-red-500/20 hover:bg-red-500/40 rounded-lg text-red-400 hover:text-red-300 transition-colors"
-        >
-          <Trash2 size={14} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// Checklist Modal Component (Create/Edit)
-function ChecklistModal({
-  checklist,
-  onClose,
-  onSave,
-}: {
-  checklist: Checklist | null;
-  onClose: () => void;
-  onSave: (checklist: any) => void;
-}) {
-  const [formData, setFormData] = useState(() => ({
-    name: checklist?.name || "",
-    description: checklist?.description || "",
-    strategy: checklist?.strategy || "",
-    items: checklist?.items || [
-      { id: crypto.randomUUID(), text: "", completed: false },
-    ],
-    isActive: checklist?.isActive || false,
-  }));
-
-  const addItem = () => {
-    setFormData({
-      ...formData,
-      items: [
-        ...formData.items,
-        { id: crypto.randomUUID(), text: "", completed: false },
-      ],
-    });
-  };
-
-  const removeItem = (id: string) => {
-    setFormData({
-      ...formData,
-      items: formData.items.filter((item) => item.id !== id),
-    });
-  };
-
-  const updateItem = (id: string, text: string) => {
-    setFormData({
-      ...formData,
-      items: formData.items.map((item) =>
-        item.id === id ? { ...item, text } : item
-      ),
-    });
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (
-      !formData.name.trim() ||
-      !formData.strategy.trim() ||
-      formData.items.length === 0
-    ) {
-      alert("Please fill in all required fields");
-      return;
-    }
-
-    onSave({
-      ...checklist,
-      ...formData,
-      items: formData.items.filter((item) => item.text.trim()),
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#0A0A0A] border border-white/10 rounded-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
-          <h3 className="text-xl font-bold text-white">
-            {checklist ? "Edit Checklist" : "Create New Checklist"}
-          </h3>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <Plus size={20} className="text-white/60 rotate-45" />
-          </button>
-        </div>
-
-        <form
-          onSubmit={handleSubmit}
-          className="flex flex-col flex-1 overflow-hidden"
-        >
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-white/60 mb-2">
-                  Checklist Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-white/30"
-                  placeholder="e.g., Scalping Entry Checklist"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-white/60 mb-2">
-                  Strategy *
-                </label>
-                <input
-                  type="text"
-                  value={formData.strategy}
-                  onChange={(e) =>
-                    setFormData({ ...formData, strategy: e.target.value })
-                  }
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-white/30"
-                  placeholder="e.g., Scalping, Swing Trading"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-white/60 mb-2">
-                Description
-              </label>
-              <textarea
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-white/30 resize-none"
-                rows={3}
-                placeholder="Brief description of this checklist..."
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <label className="text-sm font-medium text-white/60">
-                  Checklist Items *
-                </label>
-                <button
-                  type="button"
-                  onClick={addItem}
-                  className="flex items-center gap-2 px-3 py-1 bg-white/10 hover:bg-white/20 rounded-lg text-white/60 hover:text-white transition-colors"
-                >
-                  <Plus size={14} />
-                  Add Item
-                </button>
-              </div>
-
-              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
-                {formData.items.map((item, index) => (
-                  <div key={item.id} className="flex items-center gap-3">
-                    <span className="text-sm text-white/40 w-6 flex-shrink-0">
-                      {index + 1}.
-                    </span>
-                    <input
-                      type="text"
-                      value={item.text}
-                      onChange={(e) => updateItem(item.id, e.target.value)}
-                      className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:border-white/30"
-                      placeholder="Enter checklist item..."
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeItem(item.id)}
-                      className="p-2 text-red-400 hover:text-red-300 transition-colors flex-shrink-0"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="isActive"
-                checked={formData.isActive}
-                onChange={(e) =>
-                  setFormData({ ...formData, isActive: e.target.checked })
-                }
-                className="w-4 h-4 rounded border-white/20 bg-white/5 text-white focus:ring-white/20"
-              />
-              <label htmlFor="isActive" className="text-sm text-white/60">
-                Set as active checklist
-              </label>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 p-6 border-t border-white/10">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-3 text-white/60 hover:text-white transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-3 bg-white text-black rounded-xl font-bold hover:bg-gray-200 transition-colors"
-            >
-              {checklist ? "Update" : "Create"} Checklist
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// Active Checklist Modal Component (For using the checklist)
-function ActiveChecklistModal({
-  checklist,
-  onClose,
-  onComplete,
-}: {
-  checklist: Checklist;
-  onClose: () => void;
-  onComplete: (completedItems: ChecklistItem[]) => void;
-}) {
-  const [items, setItems] = useState<ChecklistItem[]>(
-    checklist.items.map((item) => ({ ...item, completed: false }))
-  );
-
-  const toggleItem = (id: string) => {
-    setItems(
-      items.map((item) =>
-        item.id === id ? { ...item, completed: !item.completed } : item
-      )
-    );
-  };
-
-  const completedCount = items.filter((item) => item.completed).length;
-  const completionPercentage = Math.round(
-    (completedCount / items.length) * 100
-  );
-
-  const handleComplete = () => {
-    onComplete(items);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#0A0A0A] border border-white/10 rounded-xl w-full max-w-lg max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
-          <div>
-            <h3 className="text-xl font-bold text-white">{checklist.name}</h3>
-            <p className="text-sm text-white/60">
-              {checklist.strategy} Strategy
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <Plus size={20} className="text-white/60 rotate-45" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="mb-6">
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-white/60">Progress</span>
-              <span className="text-white">
-                {completedCount}/{items.length} ({completionPercentage}%)
-              </span>
-            </div>
-            <div className="w-full bg-white/10 rounded-full h-2">
-              <div
-                className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${completionPercentage}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {items.map((item, index) => (
-              <div
-                key={item.id}
-                className="flex items-center gap-3 p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
-                onClick={() => toggleItem(item.id)}
-              >
-                {item.completed ? (
-                  <CheckSquare
-                    size={20}
-                    className="text-green-400 flex-shrink-0"
-                  />
-                ) : (
-                  <Square size={20} className="text-white/40 flex-shrink-0" />
-                )}
-                <span className="text-sm text-white/40 w-6 flex-shrink-0">
-                  {index + 1}.
-                </span>
-                <span
-                  className={`flex-1 text-sm ${
-                    item.completed ? "text-white/60 line-through" : "text-white"
-                  }`}
-                >
-                  {item.text}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-3 p-6 border-t border-white/10">
-          <button
-            onClick={onClose}
-            className="px-6 py-3 text-white/60 hover:text-white transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleComplete}
-            disabled={completedCount === 0}
-            className="px-6 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Complete ({completionPercentage}%)
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+// Minimal icons for metadata
+function Layers({ size }: { size: number }) { return <Database size={size} /> }
+function RefreshCw({ size }: { size: number }) { return <Zap size={size} /> }

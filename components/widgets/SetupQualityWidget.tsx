@@ -22,14 +22,17 @@ export default function SetupQualityWidget({
 }: SetupQualityWidgetProps) {
   return (
     <div className={`h-full ${className}`}>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-6">
         <div>
-          <h3 className="text-lg font-bold mb-1 text-white">Setup Quality</h3>
-          <p className="text-[11px] text-white/60 font-mono uppercase tracking-[0.2em]">
-            Grade Performance
-          </p>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse shadow-[0_0_8px_rgba(234,179,8,0.6)]" />
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">Grade Performance</span>
+          </div>
+          <h3 className="text-2xl font-black text-white italic tracking-tighter uppercase">Setup Quality</h3>
         </div>
-        <Award size={20} className="text-white/60" />
+        <div className="p-3 bg-white/5 rounded-2xl border border-white/10 text-yellow-500/80">
+          <Award size={20} />
+        </div>
       </div>
 
       {stats?.gradeBreakdown && Object.keys(stats.gradeBreakdown).length > 0 ? (
@@ -96,7 +99,7 @@ export default function SetupQualityWidget({
           </ResponsiveContainer>
         </div>
       ) : (
-        <div className="h-48 flex items-center justify-center text-white/40 text-sm">
+        <div className="h-48 flex items-center justify-center text-white/40 text-sm font-black uppercase tracking-wider italic">
           No grade data available
         </div>
       )}
