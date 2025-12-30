@@ -24,7 +24,7 @@ export async function POST(req: Request) {
 
 
     user.resetPasswordToken = hashedToken;
-    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+    user.resetPasswordExpires = new Date(Date.now() + 3600000); // 1 hour
     await user.save();
 
     const resetUrl = `${process.env.NEXTAUTH_URL}/auth/reset-password/${token}`;

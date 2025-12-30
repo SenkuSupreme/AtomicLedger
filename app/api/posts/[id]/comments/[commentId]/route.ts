@@ -6,7 +6,7 @@ import Post from '@/lib/models/Post';
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string; commentId: string } }
+  { params }: { params: Promise<{ id: string; commentId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
@@ -54,7 +54,7 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string; commentId: string } }
+  { params }: { params: Promise<{ id: string; commentId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
