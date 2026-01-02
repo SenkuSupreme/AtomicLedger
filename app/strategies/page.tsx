@@ -94,17 +94,17 @@ export default function StrategiesPage() {
   }
 
   return (
-    <div className="space-y-12 text-foreground font-sans relative min-h-screen pb-20 overflow-hidden px-4 md:px-8">
-      {/* Institutional Background Mesh */}
+    <div className="relative min-h-screen pb-20 font-sans text-white">
+      {/* Institutional Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
-        <div className="absolute top-0 right-0 w-[1000px] h-[1000px] bg-primary/[0.03] blur-[150px] -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-[1000px] h-[1000px] bg-secondary/[0.03] blur-[150px] translate-y-1/2 -translate-x-1/2" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--foreground)/0.03)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--foreground)/0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+        <div className="absolute top-0 right-0 w-[1200px] h-[1200px] bg-primary/[0.03] blur-[150px] -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-[1200px] h-[1200px] bg-secondary/[0.03] blur-[150px] translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
       </div>
 
-      {/* Header Mesh */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-border pb-10 relative z-10 gap-8">
+      <div className="max-w-[1600px] mx-auto px-12 pt-12 space-y-12">
+        {/* Header Mesh */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-border pb-10 relative z-10 gap-8">
         <div className="space-y-4">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full">
@@ -143,16 +143,6 @@ export default function StrategiesPage() {
               <ListIcon size={18} />
             </button>
           </div>
-          <button
-            onClick={() => {
-              setInitialIsTemplate(true);
-              setEditingId("new");
-            }}
-            className="group relative flex items-center gap-4 bg-muted text-muted-foreground hover:text-foreground px-8 py-3.5 rounded-[2rem] font-black text-[10px] uppercase tracking-[0.3em] transition-all border border-border active:scale-95"
-          >
-            <Plus size={18} />
-            New Blueprint
-          </button>
           <button
             onClick={() => {
               setInitialIsTemplate(false);
@@ -357,6 +347,7 @@ export default function StrategiesPage() {
         cancelText="Cancel"
         variant="danger"
       />
+      </div>
     </div>
   );
 }

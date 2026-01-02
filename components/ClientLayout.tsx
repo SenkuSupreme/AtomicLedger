@@ -44,7 +44,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2, ease: "linear" }}
-            className="p-6 pb-20 max-w-[1440px] mx-auto w-full"
+            className="w-full"
           >
             {children}
           </motion.div>

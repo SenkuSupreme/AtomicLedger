@@ -64,7 +64,7 @@ const navGroups = [
     items: [
       { href: "/strategies", icon: Layers, label: "Strategies" },
       { href: "/checklists", icon: CheckSquare, label: "Checklists" },
-      { href: "/backtester", icon: TrendingUp, label: "Backtester" },
+      // { href: "/backtester", icon: TrendingUp, label: "Backtester" },
     ],
   },
   {
@@ -82,8 +82,8 @@ const navGroups = [
       { href: "/tasks", icon: CheckSquare, label: "Tasks" },
       { href: "/goals", icon: Target, label: "Goals" },
       { href: "/habits", icon: Activity, label: "Habits" },
-      { href: "/activity-log", icon: StickyNote, label: "Activity Log" },
       { href: "/notebook", icon: Notebook, label: "Notebook" },
+      { href: "/activity-log", icon: StickyNote, label: "Activity Log" },
     ],
   },
 ];
@@ -155,7 +155,7 @@ const Sidebar = React.memo(function Sidebar({
       {/* Toggle Button */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-28 w-6 h-12 bg-[#0a0a0a] border border-white/10 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-[#151515] transition-all z-50 group hover:scale-110 shadow-[5px_0_20px_rgba(0,0,0,0.9)]"
+        className="absolute -right-3 top-28 w-6 h-12 bg-[#0a0a0a] border border-white/10 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-[#151515] transition-all z-[100] group hover:scale-110 shadow-[5px_0_20px_rgba(0,0,0,0.9)]"
       >
         <ChevronLeft
           size={12}

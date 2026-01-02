@@ -736,32 +736,32 @@ export default function TradeDetailPage() {
       </div>
 
       {/* Navigation & Actions Terminal */}
-      <div className="sticky top-0 z-50 px-8 py-6 backdrop-blur-xl border-b border-white/5 bg-[#0A0A0A]/40 mb-12">
-        <div className="max-w-[1600px] mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-8">
+      <div className="px-12 py-10 border-b border-white/5 bg-[#050505]/40 mb-12 shadow-[0_10px_40px_rgba(0,0,0,0.3)]">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-10">
             <button
               onClick={() => router.back()}
-              className="group p-4 bg-white/[0.03] border border-white/10 rounded-2xl hover:bg-white/[0.06] hover:border-white/20 transition-all active:scale-95"
+              className="group p-4 bg-white/[0.03] border border-white/10 rounded-2xl hover:bg-white/[0.06] hover:border-white/20 transition-all active:scale-95 shadow-inner"
             >
-              <ArrowLeft size={18} className="text-white/40 group-hover:text-white transition-colors" />
+              <ArrowLeft size={18} className="text-white/40 group-hover:text-white group-hover:-translate-x-1 transition-all" />
             </button>
-            <div className="h-8 w-px bg-white/5" />
+            <div className="h-10 w-px bg-white/5" />
             <div className="space-y-1.5">
                 <div className="flex items-center gap-3">
                    <div className="flex items-center gap-2 px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-full">
                       <div className="w-1 h-1 bg-blue-500 rounded-full animate-pulse" />
-                      <span className="text-[8px] font-black uppercase tracking-[0.2em] text-blue-400 italic">Trade Analysis</span>
+                      <span className="text-[8px] font-black uppercase tracking-[0.2em] text-blue-400 italic">Forensic Analysis</span>
                    </div>
-                   <span className="text-[10px] font-black text-white/60 uppercase tracking-[0.3em]">Market Status: Synchronized</span>
+                   <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Status: SYNC-OK</span>
                 </div>
-                <h1 className="text-3xl font-black italic uppercase tracking-[0.02em] bg-gradient-to-br from-white to-white/70 bg-clip-text text-transparent leading-none break-words">
-                  {trade.symbol} <span className="text-white/20">/</span> {trade.direction === 'long' ? 'Buy' : 'Sell'}
+                <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white leading-none">
+                  {trade.symbol} <span className="text-white/10 font-thin not-italic">/</span> {trade.direction === 'long' ? 'Execution Buy' : 'Execution Sell'}
                 </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1 bg-white/[0.02] border border-white/5 p-1 rounded-2xl">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-1 bg-white/[0.02] border border-white/5 p-1.5 rounded-2xl shadow-inner">
               <button
                 onClick={() => setShowShareModal(true)}
                 className="flex items-center gap-3 px-6 py-2.5 rounded-xl hover:bg-white/[0.05] text-white/60 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest italic"
@@ -775,16 +775,16 @@ export default function TradeDetailPage() {
                 className="flex items-center gap-3 px-6 py-2.5 bg-purple-500/10 border border-purple-500/20 rounded-xl text-purple-400 hover:bg-purple-500/20 transition-all text-[10px] font-black uppercase tracking-widest italic disabled:opacity-30"
               >
                 <Brain size={14} className={analyzingAI ? "animate-spin" : ""} />
-                {analyzingAI ? "Analyzing..." : "AI Analyze"}
+                {analyzingAI ? "Processing..." : "Neural Scan"}
               </button>
             </div>
 
-            <div className="h-8 w-px bg-white/5" />
+            <div className="h-10 w-px bg-white/10" />
 
             {!isEditing ? (
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex items-center gap-4 bg-white text-black px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] hover:bg-blue-500 hover:text-white transition-all shadow-2xl active:scale-95"
+                className="flex items-center gap-4 bg-white text-black px-10 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] hover:bg-blue-500 hover:text-white transition-all shadow-2xl active:scale-95"
               >
                 <Edit3 size={14} />
                 Edit
@@ -793,23 +793,23 @@ export default function TradeDetailPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setIsEditing(false)}
-                  className="px-6 py-3 border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white hover:bg-white/5 transition-all"
+                  className="px-8 py-3.5 border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white hover:bg-white/5 transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="px-8 py-3 bg-emerald-500 text-black rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-emerald-400 transition-all shadow-2xl disabled:opacity-30"
+                  className="px-8 py-3.5 bg-emerald-500 text-black rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] hover:bg-emerald-400 transition-all shadow-2xl disabled:opacity-30"
                 >
-                  {saving ? "Saving..." : "Save Changes"}
+                  {saving ? "Saving..." : "Commit Changes"}
                 </button>
               </div>
             )}
             
             <button
                onClick={() => setShowDeleteDialog(true)}
-               className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 hover:bg-rose-500 hover:text-white transition-all group"
+               className="p-4 bg-rose-500/5 border border-rose-500/10 rounded-2xl text-rose-500/40 hover:bg-rose-500 hover:text-white transition-all group active:scale-95 shadow-inner"
             >
                <Trash2 size={16} className="group-hover:rotate-12 transition-transform" />
             </button>

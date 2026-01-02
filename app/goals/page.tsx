@@ -156,7 +156,7 @@ export default function GoalsPage() {
 
       {/* Header Mesh */}
       <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-border pb-10 relative z-10 gap-8">
-        <div className="space-y-6">
+        <div className="space-y-6 pt-2">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full">
                <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse shadow-[0_0_10px_rgba(var(--primary),0.5)]" />

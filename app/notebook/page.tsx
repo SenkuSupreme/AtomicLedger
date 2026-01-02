@@ -236,7 +236,7 @@ export default function NotebookPage() {
 
       {/* Header Mesh */}
       <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-white/5 pb-10 relative z-10 gap-8">
-        <div className="space-y-6">
+        <div className="pt-2 space-y-6">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full">
                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.5)]" />

@@ -219,43 +219,52 @@ export default function SessionsPage() {
   const sessionList = Object.values(sessionsData).sort((a,b) => b.totalPnL - a.totalPnL);
 
   return (
-    <div className="space-y-12 text-foreground font-sans relative min-h-screen pb-20 overflow-hidden px-4 md:px-8">
-      {/* Background Mesh */}
+    <div className="relative min-h-screen pb-20 font-sans text-white">
+      {/* Institutional Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
-        <div className="absolute top-0 right-0 w-[1000px] h-[1000px] bg-emerald-500/[0.03] blur-[150px] -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-[1000px] h-[1000px] bg-indigo-500/[0.03] blur-[150px] translate-y-1/2 -translate-x-1/2" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--foreground)/0.03)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--foreground)/0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+        <div className="absolute top-0 right-0 w-[1200px] h-[1200px] bg-emerald-500/[0.03] blur-[150px] -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-[1200px] h-[1200px] bg-indigo-500/[0.03] blur-[150px] translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
       </div>
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-border pb-10 relative z-10 gap-8">
-        <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
-               <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-               <span className="text-[9px] font-black uppercase tracking-[0.3em] text-emerald-400">Live Analytics</span>
+      {/* Full Width Elite Header */}
+      <div className="px-12 py-10 border-b border-white/5 bg-[#050505]/40 mb-12 shadow-[0_10px_40px_rgba(0,0,0,0.3)]">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+               <div className="flex items-center gap-2 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                  <div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                  <span className="text-[8px] font-black uppercase tracking-[0.3em] text-emerald-400 italic">Temporal Engine</span>
+               </div>
+               <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">Module: Alpha Windows</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1 bg-foreground/[0.03] border border-border rounded-full text-foreground/60">
-               <Timer size={10} className="text-emerald-500/50" />
-               <span className="text-[9px] font-black uppercase tracking-[0.3em]">Session Performance</span>
+            <h1 className="text-5xl font-black italic uppercase tracking-tighter text-white leading-none">
+              Market Sessions <span className="text-white/10 font-thin not-italic">Velocity</span>
+            </h1>
+            <p className="text-white/40 text-[10px] font-bold uppercase tracking-[0.2em] italic">
+              "High-fidelity session liquidity analysis and temporal edge identification."
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-6">
+            <div className="px-6 py-2 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center gap-4 shadow-inner">
+               <div className="flex flex-col items-end">
+                  <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Global P&L</span>
+                  <span className={`text-lg font-black italic ${Object.values(sessionsData).reduce((sum, s) => sum + s.totalPnL, 0) >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                    ${Object.values(sessionsData).reduce((sum, s) => sum + s.totalPnL, 0).toFixed(2)}
+                  </span>
+               </div>
+               <div className="h-8 w-px bg-white/5" />
+               <PortfolioSelector
+                 currentId={selectedPortfolioId}
+                 onSelect={setSelectedPortfolioId}
+               />
             </div>
           </div>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-[0.02em] italic uppercase bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent leading-none">
-            Market Sessions
-          </h1>
-          <p className="text-foreground/70 text-xs md:text-sm font-medium italic max-w-xl leading-relaxed">
-            "Deep session analysis. Includes volatility metrics, average return per session, and maximum drawdown risk."
-          </p>
-        </div>
-
-        <div className="flex items-center gap-4 relative z-10">
-          <PortfolioSelector
-            currentId={selectedPortfolioId}
-            onSelect={setSelectedPortfolioId}
-          />
         </div>
       </div>
+
+      <div className="max-w-[1600px] mx-auto px-12 space-y-8">
 
       {/* Analytics Grid */}
       <div className="space-y-6 relative ">
@@ -272,6 +281,7 @@ export default function SessionsPage() {
                </div>
             )}
         </AnimatePresence>
+      </div>
       </div>
     </div>
   );

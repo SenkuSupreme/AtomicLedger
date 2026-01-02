@@ -26,17 +26,17 @@ export default function JournalPage() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   return (
-    <div className="space-y-12 text-foreground font-sans relative min-h-screen pb-20 overflow-hidden px-4 md:px-8">
-      {/* Institutional Background Mesh */}
+    <div className="relative min-h-screen pb-20 font-sans text-white">
+      {/* Institutional Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
-        <div className="absolute top-0 right-0 w-[1000px] h-[1000px] bg-blue-500/[0.03] blur-[150px] -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-[1000px] h-[1000px] bg-purple-500/[0.03] blur-[150px] translate-y-1/2 -translate-x-1/2" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--foreground)/0.03)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--foreground)/0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+        <div className="absolute top-0 right-0 w-[1200px] h-[1200px] bg-blue-500/[0.03] blur-[150px] -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-[1200px] h-[1200px] bg-purple-500/[0.03] blur-[150px] translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
       </div>
 
-      {/* Header Mesh */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-border pb-10 relative gap-8">
+      <div className="max-w-[1600px] mx-auto px-12 pt-12 space-y-12">
+        {/* Header Mesh */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-border pb-10 relative gap-8">
         <div className="space-y-4">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 py-1 bg-foreground/[0.03] border border-border rounded-full">
@@ -94,10 +94,7 @@ export default function JournalPage() {
                  <h2 className="text-xl font-black text-foreground italic uppercase tracking-tighter">Trade History</h2>
               </div>
               <div className="flex items-center gap-6">
-                 <div className="flex items-center gap-3 px-4 py-2 bg-foreground/[0.03] border border-border rounded-2xl text-muted-foreground text-[10px] font-black uppercase tracking-widest italic">
-                    <Search size={14} className="opacity-60" />
-                    <span>Search Trades...</span>
-                 </div>
+
               </div>
             </div>
 
@@ -118,6 +115,7 @@ export default function JournalPage() {
           setRefreshKey((prev) => prev + 1);
         }}
       />
+      </div>
     </div>
   );
 }

@@ -194,9 +194,9 @@ export default function ResearchPage() {
                <h3 className="text-xs font-black uppercase tracking-[0.4em] text-foreground/80 flex items-center gap-2 px-4">
                  <Activity size={16} className="text-blue-400" /> Symbol Metrics
                </h3>
-               <div className="h-44 rounded-[2rem] overflow-hidden bg-card/30 border border-border transition-all">
-                  <TVSymbolInfoWidget symbol={symbol} />
-               </div>
+                <div className="h-44 rounded-[2rem] overflow-hidden bg-black border border-white/5 shadow-2xl transition-all hover:border-blue-500/20">
+                   <TVSymbolInfoWidget symbol={symbol} />
+                </div>
           </section>
 
           {/* SECOND ROW: PROFILE & FUNDAMENTALS */}
@@ -205,7 +205,7 @@ export default function ResearchPage() {
                <h3 className="text-xs font-black uppercase tracking-[0.4em] text-foreground/80 flex items-center gap-2 px-4 group-hover:text-foreground transition-all font-bold">
                  <Info size={16} className="text-blue-400" /> Intelligence Profile
                </h3>
-               <div className="flex-1 rounded-[2.5rem] bg-card/30 border border-border p-6 overflow-hidden hover:bg-card/50 transition-all group-hover:border-blue-500/20">
+               <div className="flex-1 rounded-[2.5rem] bg-black border border-white/5 p-6 overflow-hidden hover:border-blue-500/20 transition-all flex flex-col items-center justify-center">
                   <TVCompanyProfileWidget symbol={symbol} />
                </div>
             </div>
@@ -213,7 +213,7 @@ export default function ResearchPage() {
                <h3 className="text-xs font-black uppercase tracking-[0.4em] text-foreground/80 flex items-center gap-2 px-4 group-hover:text-foreground transition-all font-bold">
                  <BarChart3 size={16} className="text-blue-400" /> Fundamental Matrix
                </h3>
-               <div className="flex-1 rounded-[2.5rem] bg-card/30 border border-border p-6 overflow-hidden hover:bg-card/50 transition-all group-hover:border-blue-500/20">
+               <div className="flex-1 rounded-[2.5rem] bg-black border border-white/5 p-6 overflow-hidden hover:border-blue-500/20 transition-all flex flex-col items-center justify-center">
                   <TVFundamentalDataWidget symbol={symbol} />
                </div>
             </div>
@@ -225,7 +225,7 @@ export default function ResearchPage() {
                 <h3 className="text-xs font-black uppercase tracking-[0.4em] text-foreground/80 flex items-center gap-2 px-4 group-hover:text-foreground transition-all font-bold">
                    <Activity size={16} className="text-blue-400" /> Quantitative Sentiment
                 </h3>
-                <div className="flex-1 rounded-[2.5rem] bg-card/30 border border-border p-6 overflow-hidden hover:bg-card/50 transition-all group-hover:border-blue-500/20">
+                <div className="flex-1 rounded-[2.5rem] bg-black border border-white/5 p-6 overflow-hidden hover:border-blue-500/20 transition-all flex flex-col items-center justify-center">
                    <TVTechnicalAnalysisWidget symbol={symbol} />
                 </div>
              </div>
@@ -233,7 +233,7 @@ export default function ResearchPage() {
                 <h3 className="text-xs font-black uppercase tracking-[0.4em] text-foreground/80 flex items-center gap-2 px-4 group-hover:text-foreground transition-all font-bold">
                    <Globe size={16} className="text-blue-400" /> Temporal Intelligence
                 </h3>
-                <div className="flex-1 rounded-[2.5rem] bg-card/30 border border-border p-6 overflow-hidden hover:bg-card/50 transition-all group-hover:border-blue-500/20">
+                <div className="flex-1 rounded-[2.5rem] bg-black border border-white/5 p-6 overflow-hidden hover:border-blue-500/20 transition-all flex flex-col items-center justify-center">
                    <TVTimelineWidget symbol={symbol} />
                 </div>
              </div>

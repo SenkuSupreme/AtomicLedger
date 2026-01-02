@@ -6,11 +6,14 @@ import { useTheme } from "next-themes";
 
 const TVWidget = ({ scriptSrc, config, id }: { scriptSrc: string, config: any, id: string }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { resolvedTheme } = useTheme();
-  const theme = resolvedTheme === 'dark' ? 'dark' : 'light';
+  const [mounted, setMounted] = React.useState(false);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted || !containerRef.current) return;
     containerRef.current.innerHTML = "";
     
     // Create the script element
@@ -19,25 +22,31 @@ const TVWidget = ({ scriptSrc, config, id }: { scriptSrc: string, config: any, i
     script.async = true;
     
     // Merge theme and transparency into the config
+    // Forcing 'dark' for institutional aesthetic
     const finalConfig = {
       ...config,
-      colorTheme: theme,
-      isTransparent: true,
+      colorTheme: "dark",
+      isTransparent: false,
+      backgroundColor: "#000000", // Absolute institutional black
       container_id: id,
       width: "100%",
-      height: "100%"
+      height: "100%",
+      locale: "en",
+      autosize: true
     };
 
     script.innerHTML = JSON.stringify(finalConfig);
     containerRef.current.appendChild(script);
-  }, [config, scriptSrc, theme, id]);
+  }, [config, scriptSrc, id, mounted]);
+
+  if (!mounted) return <div className="w-full h-full bg-black/20 animate-pulse rounded-2xl" id={id} />;
 
   return (
     <div 
       id={id} 
       ref={containerRef} 
-      className="w-full h-full bg-transparent overflow-hidden" 
-      style={{ colorScheme: theme }}
+      className="w-full h-full bg-black overflow-hidden rounded-xl" 
+      style={{ colorScheme: 'dark' }}
     />
   );
 };
@@ -49,7 +58,7 @@ export const TVTechnicalAnalysisWidget = ({ symbol = "FX:EURUSD" }) => (
     config={{
       "interval": "1h",
       "width": "100%",
-      "isTransparent": true,
+      "isTransparent": false,
       "height": "100%",
       "symbol": symbol,
       "showIntervalTabs": true,
@@ -66,7 +75,7 @@ export const TVForexHeatMapWidget = () => (
       "width": "100%",
       "height": "100%",
       "currencies": ["EUR", "USD", "JPY", "GBP", "CHF", "AUD", "CAD", "NZD"],
-      "isTransparent": true,
+      "isTransparent": false,
       "locale": "en"
     }}
   />
@@ -93,7 +102,7 @@ export const TVMarketQuotesWidget = () => (
         }
       ],
       "showSymbolLogo": true,
-      "isTransparent": true,
+      "isTransparent": false,
       "locale": "en"
     }}
   />
@@ -110,7 +119,7 @@ export const TVTickerTapeWidget = () => (
         { "proName": "BITSTAMP:BTCUSD", "title": "BTC/USD" }
       ],
       "showSymbolLogo": true,
-      "isTransparent": true,
+      "isTransparent": false,
       "displayMode": "adaptive",
       "locale": "en"
     }}
@@ -125,7 +134,7 @@ export const TVSymbolInfoWidget = ({ symbol = "FX:EURUSD" }) => (
       "symbol": symbol,
       "width": "100%",
       "locale": "en",
-      "isTransparent": true,
+      "isTransparent": false,
     }}
   />
 );
@@ -139,7 +148,7 @@ export const TVCompanyProfileWidget = ({ symbol = "FX:EURUSD" }) => (
       "height": "100%",
       "showSymbolLogo": true,
       "symbol": symbol,
-      "isTransparent": true,
+      "isTransparent": false,
       "locale": "en"
     }}
   />
@@ -156,7 +165,7 @@ export const TVFundamentalDataWidget = ({ symbol = "FX:EURUSD" }) => (
       "width": "100%",
       "height": "100%",
       "symbol": symbol,
-      "isTransparent": true,
+      "isTransparent": false,
       "locale": "en"
     }}
   />
@@ -173,7 +182,7 @@ export const TVTimelineWidget = ({ symbol = "FX:EURUSD" }) => (
       "displayMode": "regular",
       "width": "100%",
       "height": "100%",
-      "isTransparent": true,
+      "isTransparent": false,
       "locale": "en"
     }}
   />

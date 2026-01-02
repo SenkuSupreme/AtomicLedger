@@ -29,6 +29,12 @@ interface Block {
 export default function StrategyMindMap({ blocks }: { blocks: Block[] }) {
     const fgRef = useRef<any>(null);
 
+    const stripHtml = (html: string) => {
+        const tmp = document.createElement("DIV");
+        tmp.innerHTML = html;
+        return tmp.textContent || tmp.innerText || "";
+    };
+
     const graphData = useMemo(() => {
         const nodes: any[] = [];
         const links: any[] = [];
@@ -37,7 +43,7 @@ export default function StrategyMindMap({ blocks }: { blocks: Block[] }) {
         const titleBlock = blocks.find(b => b.type === 'h1') || { id: 'root', content: 'Institutional Architecture' };
         nodes.push({
             id: titleBlock.id,
-            name: titleBlock.content,
+            name: stripHtml(titleBlock.content),
             val: 60,
             color: '#0ea5e9',
             type: 'root'
@@ -46,9 +52,10 @@ export default function StrategyMindMap({ blocks }: { blocks: Block[] }) {
         // 2. Identify H2s as Pillars
         const h2s = blocks.filter(b => b.type === 'h2');
         h2s.forEach(h2 => {
+            const cleanContent = stripHtml(h2.content);
             nodes.push({
                 id: h2.id,
-                name: h2.content,
+                name: cleanContent,
                 val: 30,
                 color: '#ffffff',
                 type: 'pillar'
@@ -71,13 +78,21 @@ export default function StrategyMindMap({ blocks }: { blocks: Block[] }) {
                 currentIdx++;
             }
 
-            children.slice(0, 5).forEach(child => {
+            children.slice(0, 8).forEach(child => {
+                const cleanText = stripHtml(child.content);
+                const isHighlight = child.content.includes('<mark>') || child.content.includes('hiliteColor') || child.content.includes('background-color');
+                const isBold = child.content.includes('<b>') || child.content.includes('<strong>') || child.content.includes('font-weight: bold');
+                const isColored = child.content.includes('color:') || child.content.includes('<font color=');
+
                 nodes.push({
                     id: child.id,
-                    name: child.content.length > 25 ? child.content.substring(0, 25) + "..." : child.content,
-                    val: 12,
-                    color: '#ffffff',
-                    type: 'detail'
+                    name: cleanText.length > 35 ? cleanText.substring(0, 35) + "..." : cleanText,
+                    val: isHighlight ? 18 : 12,
+                    color: isHighlight ? '#f59e0b' : isColored ? '#38bdf8' : isBold ? '#7dd3fc' : '#ffffff',
+                    type: 'detail',
+                    isHighlight,
+                    isBold,
+                    isColored
                 });
 
                 links.push({
@@ -165,39 +180,54 @@ export default function StrategyMindMap({ blocks }: { blocks: Block[] }) {
                     const obj = new THREE.Group();
 
                     // 1. The Core Sphere
-                    const size = node.type === 'root' ? 20 : node.type === 'pillar' ? 10 : 6;
+                    const size = node.type === 'root' ? 24 : node.type === 'pillar' ? 12 : node.isHighlight ? 10 : 6;
                     const sphere = new THREE.Mesh(
                         new THREE.SphereGeometry(size, 32, 32),
                         new THREE.MeshPhongMaterial({
                             color: node.color,
                             transparent: true,
-                            opacity: node.type === 'root' ? 1 : 0.7,
+                            opacity: node.type === 'root' ? 1 : node.isHighlight ? 0.9 : 0.7,
                             emissive: node.color,
-                            emissiveIntensity: node.type === 'root' ? 1.2 : 0.4
+                            emissiveIntensity: node.type === 'root' ? 1.5 : node.isHighlight ? 0.8 : 0.4
                         })
                     );
                     obj.add(sphere);
 
+                    // Add a glow ring for highlights
+                    if (node.isHighlight) {
+                        const glowRing = new THREE.Mesh(
+                            new THREE.TorusGeometry(size + 4, 0.2, 16, 100),
+                            new THREE.MeshBasicMaterial({ color: node.color, transparent: true, opacity: 0.4 })
+                        );
+                        obj.add(glowRing);
+                    }
+
                     // 2. Persistent Label (Billboard)
-                    if (node.type !== 'detail' || Math.random() > 0.5) {
+                    if (node.type !== 'detail' || node.isHighlight || node.isBold || Math.random() > 0.6) {
                         const sprite = new SpriteText(node.name);
-                        sprite.color = node.type === 'root' ? '#ffffff' : node.type === 'pillar' ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)';
-                        sprite.textHeight = node.type === 'root' ? 14 : node.type === 'pillar' ? 8 : 5;
+                        sprite.color = node.type === 'root' ? '#ffffff' : node.isHighlight ? '#fbbf24' : node.type === 'pillar' ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)';
+                        sprite.textHeight = node.type === 'root' ? 16 : node.type === 'pillar' ? 10 : node.isHighlight ? 8 : 6;
                         sprite.fontFace = 'Inter, sans-serif';
-                        sprite.fontWeight = '900';
+                        sprite.fontWeight = (node.type === 'root' || node.isBold || node.isHighlight) ? '900' : '500';
                         sprite.padding = 2;
-                        sprite.position.y = size + 10;
+                        sprite.position.y = size + 12;
                         obj.add(sprite);
                     }
 
                     // 3. Galactic Orbit for Root
                     if (node.type === 'root') {
                         const ring = new THREE.Mesh(
-                            new THREE.TorusGeometry(32, 0.3, 16, 100),
-                            new THREE.MeshBasicMaterial({ color: '#0ea5e9', transparent: true, opacity: 0.3 })
+                            new THREE.TorusGeometry(40, 0.4, 16, 120),
+                            new THREE.MeshBasicMaterial({ color: '#0ea5e9', transparent: true, opacity: 0.2 })
                         );
                         ring.rotation.x = Math.PI / 2;
                         obj.add(ring);
+                        
+                        // Second ring
+                        const ring2 = ring.clone();
+                        ring2.scale.set(1.2, 1.2, 1.2);
+                        ring2.rotation.y = Math.PI / 4;
+                        obj.add(ring2);
                     }
 
                     return obj;

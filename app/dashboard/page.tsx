@@ -126,7 +126,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6 text-foreground font-sans relative min-h-screen pb-20 overflow-hidden px-4 md:px-6 bg-background">
+    <div className="space-y-6 text-foreground font-sans relative min-h-screen pb-20 overflow-hidden px-4 md:px-6 ">
       {/* Background Mesh - Enhanced Visibility */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
         <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/[0.02] blur-[120px] -translate-y-1/2 translate-x-1/2" />
@@ -202,7 +202,7 @@ export default function Dashboard() {
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="lg:col-span-4 h-[550px] relative z-10 bg-card border border-border rounded-[2rem] p-6 overflow-hidden group shadow-2xl flex flex-col"
+            className="lg:col-span-4 h-[550px] relative z-1 bg-card border border-border rounded-[2rem] p-6 overflow-hidden group shadow-2xl flex flex-col"
           >
 
             

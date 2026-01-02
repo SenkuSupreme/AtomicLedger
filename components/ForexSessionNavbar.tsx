@@ -236,7 +236,7 @@ const ForexSessionNavbar = React.memo(function ForexSessionNavbar() {
              <div className="absolute inset-y-0 -left-2 -right-2 bg-transparent" />
 
              {/* Detailed Time Tooltip */}
-             <div className="absolute top-8 left-4 z-[70] hidden group-hover:block w-72 p-4 bg-card/95 backdrop-blur-xl border border-border rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.9)]">
+             <div className="absolute top-8 left-4 z-[900] hidden group-hover:block w-72 p-4 bg-card/95 backdrop-blur-xl border border-border rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.9)]">
                 <div className="text-sm font-bold text-foreground mb-3 pb-2 border-b border-border flex justify-between items-center">
                   <span>Current Status</span>
                   <span className="text-[10px] font-mono text-red-400">LIVE</span>

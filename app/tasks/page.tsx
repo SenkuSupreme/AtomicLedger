@@ -150,7 +150,7 @@ export default function TasksPage() {
       </div>
 
       {/* Header Mesh */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-border pb-10 relative z-10 gap-8">
+      <div className="pt-2 flex flex-col md:flex-row md:items-end justify-between border-b border-border pb-10 relative z-10 gap-8">
         <div className="space-y-6">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full">

@@ -2,7 +2,7 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
-import { Bell, Search, User, Zap, LayoutDashboard, Calculator, Calendar as CalendarIcon, Book, BookOpen, BarChart2, BarChart3, Layers, Goal, CheckSquare, Settings, LogOut, FileText, Activity, Eye, Timer, Microscope, TrendingUp, Newspaper, Target, StickyNote, Notebook } from 'lucide-react';
+import { Bell, Search, User, Zap, LayoutDashboard, Calculator, Calendar as CalendarIcon, Book, BookOpen, BarChart2, BarChart3, Layers, Goal, CheckSquare, Settings, LogOut, FileText, Activity, Eye, Timer, Microscope, TrendingUp, Newspaper, Target, StickyNote, Notebook, Clock as ClockIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -44,14 +44,16 @@ function Clock() {
     });
 
     return (
-        <div className="hidden xl:flex items-center gap-6 px-5 py-2 bg-foreground/[0.03] border border-border rounded-2xl">
-            <div className="flex flex-col items-start border-r border-border pr-6">
-                <span className="text-[10px] text-foreground/60 font-black uppercase leading-none mb-1.5 tracking-widest">Time</span>
-                <span className="text-[11px] text-foreground/80 font-black uppercase tracking-wider">{currentTime.getHours() % 12 || 12}:{currentTime.getMinutes() < 10 ? `0${currentTime.getMinutes()}` : currentTime.getMinutes()} {currentTime.getHours() >= 12 ? 'PM' : 'AM'}</span>
-            </div>
-            <div className="flex flex-col items-start">
-                <span className="text-[10px] text-foreground/60 font-black uppercase leading-none mb-1.5 tracking-widest">Date</span>
-                <span className="text-[11px] text-foreground/80 font-black uppercase tracking-wider">{formattedDate}</span>
+        <div className="hidden xl:flex items-center gap-3 px-4 py-2 bg-white/[0.03] border border-white/10 rounded-xl">
+            <ClockIcon size={14} className="text-white/40" />
+            <div className="flex items-center gap-3">
+                <span className="text-xs font-bold text-white/90 tabular-nums tracking-wider uppercase">
+                    {currentTime.getHours() % 12 || 12}:{currentTime.getMinutes() < 10 ? `0${currentTime.getMinutes()}` : currentTime.getMinutes()} {currentTime.getHours() >= 12 ? 'PM' : 'AM'}
+                </span>
+                <div className="w-px h-3 bg-white/10" />
+                <span className="text-xs font-bold text-white/60 uppercase tracking-wider">
+                    {formattedDate}
+                </span>
             </div>
         </div>
     );
@@ -196,22 +198,9 @@ const Header = React.memo(function Header() {
         document.addEventListener("keydown", down);
         
         // Social Pulse - Mocking/Simulating social activity for the demo
-        const socialPulse = setInterval(() => {
-             const shouldSimulate = Math.random() > 0.95; 
-             if (shouldSimulate) {
-                 const types = [
-                     { title: 'New Like', message: 'Someone liked your recent trade analysis.', type: 'info' },
-                     { title: 'New Comment', message: 'A trader commented on your strategy.', type: 'info' }
-                 ];
-                 const randomNote = types[Math.floor(Math.random() * types.length)];
-                 addNotification(randomNote);
-             }
-        }, 30000);
-
         return () => {
             window.removeEventListener('apex-notification', handleCustomNotification);
             document.removeEventListener("keydown", down);
-            clearInterval(socialPulse);
         };
     }, [session]);
 

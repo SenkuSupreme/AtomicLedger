@@ -601,7 +601,7 @@ export default function TradeList({
               />
               <input
                 type="text"
-                 placeholder="Search Symbol..."
+                 placeholder="Search Trades..."
                  className="bg-foreground/[0.05] border border-border rounded-lg pl-10 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground/40 focus:border-primary/50 outline-none w-full sm:w-64 transition-all duration-200"
                  value={filter.symbol}
                  onChange={(e) =>
