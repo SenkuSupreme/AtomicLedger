@@ -213,7 +213,7 @@ export default function PortfolioSelector({
                 );
                 return (
                   <>
-                    <p className="text-xs text-muted-foreground uppercase font-mono">
+                    <p className="text-xs text-muted-foreground  font-mono">
                       Type{" "}
                       <span className="text-foreground font-bold">
                         "{portfolioToDelete?.name}"
