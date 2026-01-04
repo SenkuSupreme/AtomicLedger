@@ -133,7 +133,7 @@ const Sidebar = React.memo(function Sidebar({
       <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/[0.03] to-transparent pointer-events-none" />
 
       {/* Logo Section */}
-      <div className="h-24 flex items-center px-6 border-b border-white/5 relative overflow-hidden shrink-0">
+      <div className="h-24 flex items-center px-6 border-b border-white/5 relative overflow-hidden shrink-0 bg-black">
         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent pointer-events-none" />
         <div className="flex items-center justify-center w-full relative z-10 transition-all duration-300">
         <div className="flex items-center justify-center w-full relative z-10 transition-all duration-300">
@@ -145,8 +145,13 @@ const Sidebar = React.memo(function Sidebar({
               <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/30 mt-1.5">Elite Terminal Core</span>
             </div>
           ) : (
-             <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.3)]">
-               <TrendingUp size={20} className="text-black" strokeWidth={3} />
+             <div className="relative w-10 h-10 bg-black flex items-center justify-center">
+               <Image 
+                 src="/sidebar-logo.png" 
+                 alt="Logo" 
+                 fill
+                 className="object-contain"
+               />
              </div>
           )}
         </div>
@@ -169,7 +174,34 @@ const Sidebar = React.memo(function Sidebar({
       </button>
 
       {/* Navigation Body */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide py-8 px-3 space-y-4 relative z-10">
+      <div className="flex-1 overflow-y-auto scrollbar-hide py-8 px-3 space-y-4 relative z-10 bg-black">
+        
+        {/* AI Chat Button */}
+        <Link href="/chat-with-ai" className="block mb-6">
+          <div className={`
+            relative flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all group overflow-hidden border
+            ${pathname === '/chat-with-ai' 
+              ? 'bg-white/10 text-white border-white/20 shadow-[0_5px_20px_rgba(0,0,0,0.5)]' 
+              : 'bg-[#111] text-white/40 hover:text-white border-white/5 hover:border-white/10 hover:bg-white/5'}
+          `}>
+             {pathname === '/chat-with-ai' && (
+              <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10" />
+            )}
+            <div className={`shrink-0 ${isCollapsed ? 'mx-auto' : ''}`}>
+               <Zap size={18} className={`${pathname === '/chat-with-ai' ? 'text-white' : 'text-white/40 group-hover:text-white'} transition-colors`} />
+            </div>
+            {!isCollapsed && (
+              <div className="flex flex-col">
+                <span className={`text-sm font-bold tracking-tight ${pathname === '/chat-with-ai' ? 'text-white' : 'text-white/70 group-hover:text-white'}`}>
+                  AI Companion
+                </span>
+                <span className="text-[9px] uppercase tracking-wider opacity-40 group-hover:opacity-60 transition-opacity">Full Logic Access</span>
+              </div>
+            )}
+          </div>
+        </Link>
+        <div className="h-px bg-white/5 my-4" />
+
         <Reorder.Group axis="y" as="div" values={groups} onReorder={setGroups} className="space-y-4">
           {groups.map((group) => {
             const isExpanded = expandedGroups.includes(group.label);
@@ -248,6 +280,7 @@ const Sidebar = React.memo(function Sidebar({
           </motion.div>
         )}
       </AnimatePresence>
+
     </motion.aside>
   );
 });

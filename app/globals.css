@@ -207,4 +207,36 @@
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
   }
+
+  /* Chat Markdown Styling */
+  .prose ul {
+    list-style-type: disc;
+    padding-left: 1.5em;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+  }
+  .prose ol {
+    list-style-type: decimal;
+    padding-left: 1.5em;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+  }
+  .prose strong {
+    font-weight: 800;
+    color: oklch(0.99 0 0); /* white */
+  }
+  .prose p {
+    margin-bottom: 0.75em;
+  }
+  .prose h1, .prose h2, .prose h3 {
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+    color: oklch(0.99 0 0);
+  }
+  .prose code {
+    background: rgba(255,255,255,0.1);
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
 }

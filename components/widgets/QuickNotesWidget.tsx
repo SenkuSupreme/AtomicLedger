@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { StickyNote, Plus, Edit3, Trash2, Pin, X } from "lucide-react";
 import Link from "next/link";
 
@@ -231,9 +232,9 @@ export default function QuickNotesWidget({
       </div>
 
       {/* Delete Confirmation Dialog */}
-      {deleteConfirmNote && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 text-left">
-          <div className="bg-[#0A0A0A] border border-border rounded-xl p-6 w-full max-w-md">
+      {deleteConfirmNote && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+          <div className="bg-[#0A0A0A] border border-border rounded-xl p-6 w-full max-w-md shadow-2xl relative z-[10000]">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-red-500/10 rounded-lg">
                 <Trash2 size={20} className="text-red-400" />
@@ -241,28 +242,29 @@ export default function QuickNotesWidget({
               <h3 className="text-lg font-bold text-white">Delete Note</h3>
             </div>
 
-            <p className="text-foreground/90 dark:text-foreground mb-6">
-              Are you sure you want to delete "
-              <span className="font-medium">{deleteConfirmNote.title}</span>"?
-              This action cannot be undone.
+            <p className="text-foreground/90 dark:text-foreground mb-6 text-sm leading-relaxed">
+              Are you sure you want to delete{" "}
+              <span className="font-bold text-white">"{deleteConfirmNote.title || 'Untitled'}"</span>?
+              <br/>This action cannot be undone.
             </p>
 
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeleteConfirmNote(null)}
-                className="px-4 py-2 text-foreground/80 dark:text-muted-foreground hover:text-foreground transition-colors"
+                className="px-4 py-2 text-xs font-bold text-foreground/60 uppercase tracking-wider hover:text-white transition-colors"
                >
                 Cancel
               </button>
               <button
                 onClick={() => handleDeleteNote(deleteConfirmNote._id)}
-                className="px-6 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors"
+                className="px-6 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-all shadow-[0_0_20px_rgba(239,68,68,0.4)]"
               >
                 Delete
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

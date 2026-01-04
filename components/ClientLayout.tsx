@@ -12,6 +12,19 @@ import { Toaster } from 'sonner';
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    // Load persisted state on mount
+    const saved = localStorage.getItem('sidebar-collapsed');
+    if (saved !== null) {
+      setIsSidebarCollapsed(JSON.parse(saved));
+    }
+  }, []);
+
+  const handleSidebarCollapse = (collapsed: boolean) => {
+    setIsSidebarCollapsed(collapsed);
+    localStorage.setItem('sidebar-collapsed', JSON.stringify(collapsed));
+  };
   const pathname = usePathname();
   const mainScrollRef = useRef<HTMLDivElement>(null);
 
@@ -32,7 +45,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   return (
     <div className="flex min-h-screen text-foreground selection:bg-primary/20">
-      <Sidebar isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed} />
+      <Sidebar isCollapsed={isSidebarCollapsed} setIsCollapsed={handleSidebarCollapse} />
       <div 
         ref={mainScrollRef} 
         className={`flex-1 flex flex-col h-screen overflow-y-auto scrollbar-hide transition-all duration-500 ease-in-out ${isSidebarCollapsed ? 'ml-[80px]' : 'ml-[250px]'}`}

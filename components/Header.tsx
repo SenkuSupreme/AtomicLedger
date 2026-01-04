@@ -2,7 +2,7 @@
 'use client';
 
 import { useSession, signOut } from 'next-auth/react';
-import { Bell, Search, User, Zap, LayoutDashboard, Calculator, Calendar as CalendarIcon, Book, BookOpen, BarChart2, BarChart3, Layers, Goal, CheckSquare, Settings, LogOut, FileText, Activity, Eye, Timer, Microscope, TrendingUp, Newspaper, Target, StickyNote, Notebook, Clock as ClockIcon } from 'lucide-react';
+import { Bell, Search, User, Zap, LayoutDashboard, Calculator, Calendar as CalendarIcon, Book, BookOpen, BarChart2, BarChart3, Layers, Goal, CheckSquare, Settings, LogOut, FileText, Activity, Eye, Timer, Microscope, TrendingUp, Newspaper, Target, StickyNote, Notebook, Clock as ClockIcon, Maximize2, Minimize2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -72,6 +72,19 @@ const Header = React.memo(function Header() {
     const [open, setOpen] = useState(false);
     const [notifications, setNotifications] = useState<any[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [isFullScreen, setIsFullScreen] = useState(false);
+
+    const toggleFullScreen = () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+            setIsFullScreen(true);
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+                setIsFullScreen(false);
+            }
+        }
+    };
 
     const SESSIONS = [
       { name: 'Sydney Session', start: 22, end: 7 }, 
@@ -237,7 +250,14 @@ const Header = React.memo(function Header() {
 
                     <div className="flex items-center gap-6">
                         <Clock />
-                        {/* <ThemeToggle /> */}
+                        
+                        <button
+                            onClick={toggleFullScreen}
+                            className="p-2 text-muted-foreground/60 hover:text-foreground hover:bg-foreground/5 rounded-lg transition-all"
+                            title={isFullScreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                        >
+                            {isFullScreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                        </button>
 
                         {/* Notifications */}
                         <DropdownMenu>

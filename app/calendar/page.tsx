@@ -179,7 +179,7 @@ export default function CalendarPage() {
   }, [calendarData, viewDate]);
 
   return (
-    <div className="relative min-h-screen pb-20 font-sans text-white">
+    <div className="relative min-h-screen pb-20 font-sans text-white ">
       {/* Background Decor */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
         <div className="absolute top-0 right-0 w-[1200px] h-[1200px] bg-emerald-500/[0.03] blur-[150px] -translate-y-1/2 translate-x-1/2" />
@@ -382,12 +382,12 @@ function StatCard({ label, value, icon, color }: { label: string; value: any; ic
   return (
     <div className="bg-[#050505]/40 backdrop-blur-xl border border-white/5 rounded-[2rem] p-6 group hover:bg-white/[0.02] transition-all duration-500">
        <div className="flex items-center justify-between mb-4">
-          <div className="p-2.5 bg-white/5 rounded-xl text-white/40 group-hover:text-white transition-colors">
+          <div className="p-2.5 bg-white/5 rounded-xl text-white/80 group-hover:text-white transition-colors">
              {icon}
           </div>
           <span className={`text-2xl font-black italic tracking-tighter transition-all duration-500 ${colors[color]}`}>{value}</span>
        </div>
-       <div className="text-[9px] font-black text-white/20 uppercase tracking-[0.3em] italic leading-none group-hover:translate-x-1 transition-transform">
+       <div className="text-[9px] font-black text-white/80 uppercase tracking-[0.3em] italic leading-none group-hover:translate-x-1 transition-transform">
           {label}
        </div>
     </div>
