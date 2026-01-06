@@ -363,12 +363,12 @@ export default function TradeDetailPage() {
       });
 
       const uploadedUrls = await Promise.all(uploadPromises);
-      const currentScreenshots = editForm.screenshots || [];
-
-      setEditForm({
-        ...editForm,
-        screenshots: [...currentScreenshots, ...uploadedUrls],
-      });
+      
+      setEditForm((prev: any) => ({
+        ...prev,
+        screenshots: [...(prev.screenshots || []), ...uploadedUrls],
+      }));
+      
       toast.success("Screenshots uploaded successfully");
     } catch (error) {
       console.error("Upload failed:", error);
@@ -379,11 +379,13 @@ export default function TradeDetailPage() {
   };
 
   const removeScreenshot = (index: number) => {
-    const updatedScreenshots = [...(editForm.screenshots || [])];
-    updatedScreenshots.splice(index, 1);
-    setEditForm({
-      ...editForm,
-      screenshots: updatedScreenshots,
+    setEditForm((prev: any) => {
+      const updatedScreenshots = [...(prev.screenshots || [])];
+      updatedScreenshots.splice(index, 1);
+      return {
+        ...prev,
+        screenshots: updatedScreenshots,
+      };
     });
   };
 

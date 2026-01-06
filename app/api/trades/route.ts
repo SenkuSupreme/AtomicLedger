@@ -244,7 +244,7 @@ export async function POST(req: Request) {
 
     // Update Portfolio Current Balance
     const t = trade as any;
-    if (t.portfolioId && t.pnl) {
+    if (t.portfolioId && t.pnl !== null && t.pnl !== undefined) {
       await Portfolio.findOneAndUpdate(
         { _id: t.portfolioId, userId: (session.user as any).id },
         { $inc: { currentBalance: t.pnl } }

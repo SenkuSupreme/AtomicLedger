@@ -17,12 +17,15 @@ import {
   BarChart3,
   Dna,
   Scale,
-  Percent
+  Percent,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type CalculatorMode = "position" | "pip" | "drawdown" | "leverage" | "consistency";
-type AssetType = "forex" | "gold" | "commodities" | "crypto";
+type AssetType = "forex" | "gold" | "commodities" | "crypto" | "indices";
+type Direction = "long" | "short";
 
 export default function CalculatorPage() {
   const [activeMode, setActiveMode] = useState<CalculatorMode>("position");
@@ -32,7 +35,9 @@ export default function CalculatorPage() {
   const [riskPercent, setRiskPercent] = useState<number>(1);
   const [entryPrice, setEntryPrice] = useState<number>(1.0850);
   const [stopLoss, setStopLoss] = useState<number>(1.0820);
+  const [takeProfit, setTakeProfit] = useState<number>(1.0900);
   const [assetType, setAssetType] = useState<AssetType>("forex");
+  const [direction, setDirection] = useState<Direction>("long");
   
   // Pip Calculator State
   const [lotSize, setLotSize] = useState<number>(1.0);
@@ -51,35 +56,100 @@ export default function CalculatorPage() {
   // Computed Values
   const [results, setResults] = useState<any>({});
 
-  const contractSizes = {
-    forex: 100000,
-    gold: 100,
-    commodities: 1000,
-    crypto: 1
+  // Helper to determine contract parameters based on asset type and price (for JPY detection)
+  const getAssetParams = (type: AssetType, price: number) => {
+    let contractSize = 100000;
+    let pipSize = 0.0001;
+
+    switch (type) {
+      case "forex":
+        // Heuristic: If price > 50, assume JPY pair (or similar) where pip is 0.01
+        if (price > 50) {
+          contractSize = 100000;
+          pipSize = 0.01;
+        } else {
+          contractSize = 100000;
+          pipSize = 0.0001;
+        }
+        break;
+      case "gold":
+        contractSize = 100; // Standard 100oz contract
+        pipSize = 0.01;
+        break;
+      case "commodities":
+        contractSize = 1000; // Common for Oil (WTI)
+        pipSize = 0.01;
+        break;
+      case "indices":
+        contractSize = 1; // Often 1 or 10 depending on broker, but 1 is safe baseline
+        pipSize = 1;
+        break;
+      case "crypto":
+        contractSize = 1;
+        pipSize = 0.1; // Arbitrary for crypto, but useful for display
+        break;
+    }
+    return { contractSize, pipSize };
   };
 
   useEffect(() => {
     const compute = () => {
+      const { contractSize, pipSize } = getAssetParams(assetType, entryPrice);
+
       if (activeMode === "position") {
         const riskVal = (balance * riskPercent) / 100;
-        const distance = Math.abs(entryPrice - stopLoss);
-        const multiplier = assetType === "gold" ? 1 : 10000; // Simplified
-        const pips = distance * multiplier;
         
-        // lot = Risk / (Pips * Value per Pip)
-        // For Forex 0.1 lots = 1$ per pip on 4/5 digit pairs. 
-        // 1.0 lot = 10 units of currency (simplified)
-        const unitsPerPip = assetType === "gold" ? 1 : 10;
-        const calculatedLots = pips > 0 ? riskVal / (pips * unitsPerPip) : 0;
+        let distance = 0;
+        if (direction === "long") {
+           distance = entryPrice - stopLoss;
+        } else {
+           distance = stopLoss - entryPrice;
+        }
+
+        // Use absolute distance for risk calculation to prevent accumulation of errors if user is midway typing
+        // But practically, risk is driven by the magnitude of the gap.
+        const riskPriceDistance = Math.abs(entryPrice - stopLoss);
         
+        // Pips Logic
+        const pipsLower = riskPriceDistance / pipSize;
+        
+        // Lot Logic
+        // Formula: Risk = Lots * ContractSize * Distance
+        // Lots = Risk / (ContractSize * Distance)
+        let calculatedLots = 0;
+        if (riskPriceDistance > 0) {
+           calculatedLots = riskVal / (contractSize * riskPriceDistance);
+        }
+        
+        // R-Multiple
+        let rMultiple = 0;
+        let potentialProfit = 0;
+        
+        if (takeProfit) {
+            let rewardDist = 0;
+            if (direction === "long") {
+                rewardDist = takeProfit - entryPrice;
+            } else {
+                rewardDist = entryPrice - takeProfit;
+            }
+            
+            if (rewardDist > 0 && riskPriceDistance > 0) {
+                rMultiple = rewardDist / riskPriceDistance;
+                potentialProfit = rMultiple * riskVal;
+            }
+        }
+
         setResults({
           riskAmount: riskVal,
-          pipDistance: pips,
+          pipDistance: pipsLower,
           lots: calculatedLots,
-          units: calculatedLots * contractSizes[assetType]
+          units: calculatedLots * contractSize,
+          rMultiple,
+          potentialProfit,
+          valuePerPip: calculatedLots * contractSize * pipSize
         });
       } else if (activeMode === "pip") {
-        const valuePerPip = lotSize * (assetType === "gold" ? 1 : 10);
+        const valuePerPip = lotSize * contractSize * pipSize;
         setResults({
           pipValue: valuePerPip,
           totalProfit: valuePerPip * pipsToCalc
@@ -93,10 +163,10 @@ export default function CalculatorPage() {
           recoveryNeeded: (diff / currentBalance) * 100
         });
       } else if (activeMode === "leverage") {
-        const exposure = totalExposure * contractSizes[assetType] * entryPrice;
-        const lev = exposure / balance;
+        const exp = totalExposure * contractSize * entryPrice;
+        const lev = exp / balance;
         setResults({
-          exposure,
+          exposure: exp,
           leverage: lev
         });
       } else if (activeMode === "consistency") {
@@ -113,7 +183,7 @@ export default function CalculatorPage() {
     };
 
     compute();
-  }, [activeMode, balance, riskPercent, entryPrice, stopLoss, assetType, lotSize, pipsToCalc, startBalance, currentBalance, totalExposure, dailyProfits]);
+  }, [activeMode, balance, riskPercent, entryPrice, stopLoss, takeProfit, assetType, direction, lotSize, pipsToCalc, startBalance, currentBalance, totalExposure, dailyProfits]);
 
   const modes: { id: CalculatorMode; label: string; icon: any }[] = [
     { id: "position", label: "Position Size", icon: <Target size={16} /> },
@@ -123,7 +193,7 @@ export default function CalculatorPage() {
     { id: "consistency", label: "Consistency", icon: <Dna size={16} /> },
   ];
 
-  const assets: AssetType[] = ["forex", "gold", "commodities", "crypto"];
+  const assets: AssetType[] = ["forex", "gold", "commodities", "crypto", "indices"];
 
   return (
     <div className="space-y-12 text-white font-sans relative min-h-screen pb-20 overflow-hidden px-4 md:px-8">
@@ -183,13 +253,13 @@ export default function CalculatorPage() {
            >
               <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.01] pointer-events-none" />
               
-              <div className="mb-10 flex items-center gap-6">
-                <div className="flex items-center gap-2 p-1 bg-black/40 border border-white/10 rounded-2xl">
+              <div className="mb-10 flex flex-wrap items-center gap-6">
+                <div className="flex items-center gap-2 p-1 bg-black/40 border border-white/10 rounded-2xl overflow-x-auto max-w-full">
                   {assets.map(a => (
                     <button
                       key={a}
                       onClick={() => setAssetType(a)}
-                      className={`px-5 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all ${
+                      className={`px-5 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all whitespace-nowrap ${
                         assetType === a ? "bg-amber-500 text-black" : "text-white/40 hover:text-white/60"
                       }`}
                     >
@@ -197,6 +267,27 @@ export default function CalculatorPage() {
                     </button>
                   ))}
                 </div>
+                
+                {activeMode === "position" && (
+                  <div className="flex items-center gap-2 p-1 bg-black/40 border border-white/10 rounded-2xl">
+                      <button
+                        onClick={() => setDirection("long")}
+                        className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all ${
+                          direction === "long" ? "bg-emerald-500 text-black" : "text-white/40 hover:text-white/60"
+                        }`}
+                      >
+                        <ArrowUp size={12} /> Long
+                      </button>
+                      <button
+                        onClick={() => setDirection("short")}
+                        className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all ${
+                          direction === "short" ? "bg-rose-500 text-black" : "text-white/40 hover:text-white/60"
+                        }`}
+                      >
+                        <ArrowDown size={12} /> Short
+                      </button>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10 relative z-10">
@@ -205,7 +296,8 @@ export default function CalculatorPage() {
                     <InputBlock label="Account balance ($)" value={balance} onChange={setBalance} suffix="USD" />
                     <InputBlock label="Risk Exposure (%)" value={riskPercent} onChange={setRiskPercent} suffix="%" />
                     <InputBlock label="Entry price" value={entryPrice} onChange={setEntryPrice} icon={<TrendingUp size={20} />} />
-                    <InputBlock label="Stop Loss" value={stopLoss} onChange={setStopLoss} icon={<TrendingDown size={20} />} />
+                    <InputBlock label="Stop Loss" value={stopLoss} onChange={setStopLoss} icon={<Shield size={20} />} />
+                    <InputBlock label="Take Profit (Optional)" value={takeProfit} onChange={setTakeProfit} icon={<Target size={20} />} />
                   </>
                 )}
                 {activeMode === "pip" && (
@@ -245,7 +337,9 @@ export default function CalculatorPage() {
                  <div className="absolute inset-0 bg-amber-500/5 translate-x-full group-hover/warning:translate-x-0 transition-transform duration-500" />
                   <div className="flex items-center gap-4 relative z-10">
                     <Shield size={24} className="text-amber-500/60" />
-                    <p className="text-[11px] font-black text-white/70 uppercase tracking-[0.2em] italic">Risk Monitor: Active</p>
+                    <p className="text-[11px] font-black text-white/70 uppercase tracking-[0.2em] italic">
+                       {activeMode === "position" ? `Risk: $${results.riskAmount?.toFixed(2)}` : "Risk Monitor: Active"}
+                    </p>
                   </div>
                   <div className="h-2 w-32 bg-white/10 rounded-full relative z-10 overflow-hidden">
                     <div className="h-full bg-amber-500 w-[60%]" />
@@ -257,7 +351,12 @@ export default function CalculatorPage() {
                {activeMode === "position" && (
                 <>
                   <StatSummary icon={<Target size={24} />} label="Pip Distance" value={`${results.pipDistance?.toFixed(1)} Pips`} />
-                  <StatSummary icon={<Shield size={24} />} label="Max Loss ($)" value={`-$${results.riskAmount?.toFixed(2)}`} color="red" />
+                  <StatSummary 
+                    icon={<Dna size={24} />} 
+                    label="Reward Ratio" 
+                    value={`${results.rMultiple?.toFixed(2) || "0.00"}R`} 
+                    color={results.rMultiple >= 2 ? "green" : results.rMultiple < 1 ? "red" : "sky"}
+                  />
                 </>
               )}
               {activeMode === "drawdown" && (
@@ -311,7 +410,10 @@ export default function CalculatorPage() {
                     {activeMode === "position" && (
                       <>
                         <ResultRow label="Notional Volume" value={(results.units || 0).toLocaleString()} />
-                        <ResultRow label="Value Per Pip" value={`$${((results.lots || 0) * (assetType === "gold" ? 1 : 10)).toFixed(2)}`} />
+                        <ResultRow label="Value Per Pip" value={`$${(results.valuePerPip || 0).toFixed(2)}`} />
+                        {results.potentialProfit > 0 && (
+                             <ResultRow label="Potential Profit" value={`$${results.potentialProfit.toFixed(2)}`} />
+                        )}
                       </>
                     )}
                     {activeMode === "pip" && (
@@ -375,7 +477,7 @@ function InputBlock({ label, value, onChange, suffix, icon }: { label: string; v
             type="number" 
             value={value}
             onChange={(e) => onChange(Number(e.target.value))}
-            className="w-full bg-white/[0.02] border border-white/5 rounded-[2rem] p-8 text-2xl font-black italic tracking-tighter tabular-nums text-white/90 focus:outline-none focus:border-amber-500/30 focus:bg-white/[0.04] transition-all group-hover/input:border-white/10"
+            className="w-full bg-white/[0.02] border border-white/10 rounded-[2rem] p-8 text-2xl font-black italic tracking-tighter tabular-nums text-white/90 focus:outline-none focus:border-amber-500/30 focus:bg-white/[0.04] transition-all group-hover/input:border-white/10"
           />
           <div className="absolute right-8 top-1/2 -translate-y-1/2 text-white/40 group-hover/input:text-white/70 transition-colors flex items-center gap-2">
             {suffix}
@@ -389,12 +491,12 @@ function InputBlock({ label, value, onChange, suffix, icon }: { label: string; v
 function StatSummary({ icon, label, value, color = "sky" }: { icon: any; label: string; value: string; color?: string }) {
   return (
     <div className="bg-[#0A0A0A]/40 backdrop-blur-xl border border-white/5 rounded-[2.5rem] p-8 shadow-xl flex items-center gap-6 group hover:border-amber-500/20 transition-all">
-      <div className={`p-4 bg-white/5 border border-white/10 rounded-2xl transition-all ${color === "red" ? "group-hover:bg-red-500/10 group-hover:border-red-500/20" : "group-hover:bg-amber-500/10 group-hover:border-amber-500/20"}`}>
+      <div className={`p-4 bg-white/5 border border-white/10 rounded-2xl transition-all ${color === "red" ? "group-hover:bg-red-500/10 group-hover:border-red-500/20" : color === "green" ? "group-hover:bg-green-500/10 group-hover:border-green-500/20" : "group-hover:bg-amber-500/10 group-hover:border-amber-500/20"}`}>
         {icon}
       </div>
       <div>
         <span className="text-[10px] font-black text-white/50 uppercase tracking-[0.4em] italic">{label}</span>
-        <h3 className={`text-2xl font-black italic tracking-tighter tabular-nums ${color === "red" ? "text-red-500/80" : "text-white"}`}>{value}</h3>
+        <h3 className={`text-2xl font-black italic tracking-tighter tabular-nums ${color === "red" ? "text-red-500/80" : color === "green" ? "text-green-500/80" : "text-white"}`}>{value}</h3>
       </div>
     </div>
   );

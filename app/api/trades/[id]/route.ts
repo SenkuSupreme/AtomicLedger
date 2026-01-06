@@ -85,23 +85,61 @@ export async function PUT(
       }
     }
 
-    const trade = await Trade.findOneAndUpdate(
-      { 
-        _id: id, 
-        // @ts-ignore
-        userId: session.user.id 
-      },
-      { $set: updateData },
-      { new: true }
-    )
-    .populate('strategyId', 'name isTemplate')
-    .populate('portfolioId', 'name accountType');
-
+    const trade = await Trade.findById(id);
     if (!trade) {
       return NextResponse.json({ message: 'Trade not found' }, { status: 404 });
     }
 
-    return NextResponse.json(trade);
+    // Capture old state for balance adjustment
+    const oldPortfolioId = trade.portfolioId?.toString();
+    const oldPnL = trade.pnl || 0;
+
+    // Apply updates
+    Object.assign(trade, updateData);
+
+    const updatedTrade = await trade.save();
+    
+    // Sync Portfolio Balance
+    const newPortfolioId = updatedTrade.portfolioId?.toString();
+    const newPnL = updatedTrade.pnl || 0;
+
+    if (oldPortfolioId && newPortfolioId) {
+      if (oldPortfolioId === newPortfolioId) {
+        // Same portfolio, adjust by difference
+        const pnlDiff = newPnL - oldPnL;
+        if (pnlDiff !== 0) {
+          await Portfolio.findByIdAndUpdate(oldPortfolioId, {
+            $inc: { currentBalance: pnlDiff }
+          });
+        }
+      } else {
+        // Portfolio changed
+        // 1. Revert old PnL from old portfolio
+        await Portfolio.findByIdAndUpdate(oldPortfolioId, {
+          $inc: { currentBalance: -oldPnL }
+        });
+        // 2. Add new PnL to new portfolio
+        await Portfolio.findByIdAndUpdate(newPortfolioId, {
+          $inc: { currentBalance: newPnL }
+        });
+      }
+    } else if (newPortfolioId) {
+       // Added to a portfolio (was null before)
+       await Portfolio.findByIdAndUpdate(newPortfolioId, {
+          $inc: { currentBalance: newPnL }
+       });
+    } else if (oldPortfolioId) {
+       // Removed from a portfolio (now null)
+       await Portfolio.findByIdAndUpdate(oldPortfolioId, {
+          $inc: { currentBalance: -oldPnL }
+       });
+    }
+
+    // Re-populate for response
+    await updatedTrade.populate('strategyId', 'name isTemplate');
+    await updatedTrade.populate('portfolioId', 'name accountType');
+
+    return NextResponse.json(updatedTrade);
   } catch (error) {
     console.error('Update trade error:', error);
     return NextResponse.json({ message: 'Error updating trade' }, { status: 500 });
@@ -122,7 +160,7 @@ export async function DELETE(
   try {
     await dbConnect();
     
-    const trade = await Trade.findOneAndDelete({ 
+    const trade = await Trade.findOne({ 
       _id: id, 
       // @ts-ignore
       userId: session.user.id 
@@ -131,6 +169,15 @@ export async function DELETE(
     if (!trade) {
       return NextResponse.json({ message: 'Trade not found' }, { status: 404 });
     }
+
+    // Revert Portfolio Balance
+    if (trade.portfolioId && trade.pnl !== null && trade.pnl !== undefined) {
+       await Portfolio.findByIdAndUpdate(trade.portfolioId, {
+          $inc: { currentBalance: -trade.pnl }
+       });
+    }
+
+    await trade.deleteOne();
 
     return NextResponse.json({ message: 'Trade deleted successfully' });
   } catch (error) {

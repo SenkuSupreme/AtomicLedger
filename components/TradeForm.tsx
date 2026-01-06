@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
-import { Layers, Zap } from "lucide-react";
+import { Layers, Zap, Upload, X, Image as ImageIcon } from "lucide-react";
 
 export default function TradeForm({
   isBacktest = false,
@@ -18,6 +18,8 @@ export default function TradeForm({
   const router = useRouter();
   const [portfolios, setPortfolios] = useState<any[]>([]);
   const [strategies, setStrategies] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [screenshots, setScreenshots] = useState<string[]>([]);
 
   useEffect(() => {
     fetch("/api/portfolios")
@@ -107,6 +109,7 @@ export default function TradeForm({
       pnl: finalPnl,
       rMultiple,
       inBacktest: isBacktest,
+      screenshots,
     };
 
     const res = await fetch("/api/trades", {
@@ -143,6 +146,40 @@ export default function TradeForm({
       </div>
     );
   }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploading(true);
+    try {
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) throw new Error("Upload failed");
+        const data = await response.json();
+        return data.url;
+      });
+
+      const uploadedUrls = await Promise.all(uploadPromises);
+      setScreenshots((prev) => [...prev, ...uploadedUrls]);
+    } catch (error) {
+      console.error("Upload failed:", error);
+      alert("Failed to upload images");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeScreenshot = (index: number) => {
+    setScreenshots((prev) => prev.filter((_, i) => i !== index));
+  };
 
   return (
     <form
@@ -474,6 +511,59 @@ export default function TradeForm({
           className="w-full bg-[#111] border border-white/10 rounded-lg px-3 py-3 text-white focus:border-white/30 outline-none"
           placeholder="Tags"
         />
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-xs font-mono uppercase text-gray-400">
+            Screenshots
+          </label>
+          <label className="cursor-pointer group/upload">
+            <div className="px-3 py-1 bg-white/5 border border-white/10 rounded flex items-center gap-2 hover:bg-white/10 transition-colors">
+              <Upload size={12} className="text-gray-400 group-hover/upload:text-white" />
+              <span className="text-[10px] uppercase tracking-wider text-gray-400 group-hover/upload:text-white">
+                {uploading ? "Uploading..." : "Upload"}
+              </span>
+            </div>
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+              disabled={uploading}
+            />
+          </label>
+        </div>
+
+        {screenshots.length === 0 ? (
+          <div className="border border-dashed border-white/10 rounded-lg p-8 flex flex-col items-center justify-center text-gray-500 bg-[#111]">
+            <ImageIcon size={24} className="mb-2 opacity-50" />
+            <span className="text-xs uppercase tracking-wider">No Screenshots</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            {screenshots.map((url, idx) => (
+              <div
+                key={idx}
+                className="relative aspect-video rounded-lg overflow-hidden border border-white/10 group bg-black"
+              >
+                <img
+                  src={url}
+                  alt={`Screenshot ${idx + 1}`}
+                  className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeScreenshot(idx)}
+                  className="absolute top-2 right-2 p-1 bg-black/50 hover:bg-red-500/80 rounded transition-colors text-white opacity-0 group-hover:opacity-100"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex justify-end gap-3 pt-4 border-t border-white/10">

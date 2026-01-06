@@ -65,6 +65,7 @@ export async function GET(req: Request) {
 
   // Fetch Portfolio static data
   let initialBalance = 0;
+  let currentBalance = 0;
   let deposits = 0;
   let withdrawals = 0;
 
@@ -72,22 +73,24 @@ export async function GET(req: Request) {
       const portfolio = await Portfolio.findOne({ _id: portfolioId, userId: (session.user as any).id }).lean();
       if (portfolio) {
           initialBalance = (portfolio as any).initialBalance || 0;
+          currentBalance = (portfolio as any).currentBalance !== undefined ? (portfolio as any).currentBalance : initialBalance;
           deposits = (portfolio as any).deposits || 0;
           withdrawals = (portfolio as any).withdrawals || 0;
       }
   } else {
       const portfolios = await Portfolio.find({ userId: (session.user as any).id }).lean();
       initialBalance = portfolios.reduce((sum, p) => sum + ((p as any).initialBalance || 0), 0);
+      currentBalance = portfolios.reduce((sum, p) => sum + ((p as any).currentBalance !== undefined ? (p as any).currentBalance : (p as any).initialBalance || 0), 0);
       deposits = portfolios.reduce((sum, p) => sum + ((p as any).deposits || 0), 0);
       withdrawals = portfolios.reduce((sum, p) => sum + ((p as any).withdrawals || 0), 0);
   }
 
   // Anchor strictly to initialBalance to avoid double counting
-  // If the user has not set initialBalance, it starts from 0 effectively.
   const baseBalance = initialBalance;
-  const liveBalance = baseBalance + totalAllTimePnl + deposits - withdrawals;
-
-  const balance = liveBalance;
+  
+  // Use STORED currentBalance as the single source of truth for the dashboard wallet
+  // This matches the transactional logic in POST/PUT/DELETE
+  const balance = currentBalance;
 
   // Use .lean() to skip Mongoose hydration for massive speed gains in analytical processing
   // @ts-ignore
