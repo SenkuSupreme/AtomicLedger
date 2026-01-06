@@ -563,6 +563,30 @@ const AutoResizeTextarea = React.forwardRef<HTMLTextAreaElement, any>(({ value, 
             placeholder={placeholder}
             className={`w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 p-0 resize-none overflow-hidden shadow-none ${className}`}
             rows={1}
+            onPaste={(e) => {
+                e.preventDefault();
+                const text = e.clipboardData.getData('text/plain');
+                // Remove formatting, force simple text, replace CRLF with LF
+                const cleanText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                // Insert at cursor position or replace selection
+                const target = e.target as HTMLTextAreaElement;
+                const start = target.selectionStart;
+                const end = target.selectionEnd;
+                const newValue = value.substring(0, start) + cleanText + value.substring(end);
+                
+                onChange(newValue);
+                // We need to wait a tick for the react state to update the value and re-render
+                // before we can set the cursor position. 
+                // However, since this is a controlled component, the parent 'onChange' will update 'value'
+                // and once that flows back down, we'd ideally set the selection.
+                // A simpler approximation for now: just trigger the change. 
+                // Advanced implementation would require layouts effect to restore cursor.
+                 setTimeout(() => {
+                    if (target) {
+                        target.selectionStart = target.selectionEnd = start + cleanText.length;
+                    }
+                }, 0);
+            }}
             {...props}
         />
     );

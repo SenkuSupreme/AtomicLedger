@@ -265,9 +265,9 @@ export default function AICompanionPage() {
                        </div>
                        
                        <div className={`
-                         relative p-6 rounded-3xl text-sm leading-7 font-medium
+                         relative p-6 rounded-3xl text-[15px] leading-relaxed font-medium tracking-wide drop-shadow-sm
                          ${msg.role === 'ai' 
-                           ? 'bg-gradient-to-br from-indigo-500/[0.05] to-purple-500/[0.05] border border-white/10 text-white/80 rounded-tl-sm' 
+                           ? 'bg-gradient-to-br from-indigo-500/[0.08] to-purple-500/[0.08] border border-white/10 text-white/95 rounded-tl-sm shadow-[0_4px_20px_rgba(0,0,0,0.2)]' 
                            : 'bg-white text-black border border-white rounded-tr-sm shadow-[0_0_30px_rgba(255,255,255,0.1)]'}
                        `}>
                           {msg.role === 'ai' && (

@@ -341,6 +341,24 @@ const AutoResizeTextarea = React.forwardRef<HTMLTextAreaElement, any>(({ value, 
             placeholder={placeholder}
             className={`w-full bg-transparent border-none outline-none focus:outline-none focus:ring-0 p-0 resize-none overflow-hidden shadow-none ${className}`}
             rows={1}
+            onPaste={(e) => {
+                e.preventDefault();
+                const text = e.clipboardData.getData('text/plain');
+                // Remove formatting, force simple text, replace CRLF with LF
+                const cleanText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                // Insert at cursor position or replace selection
+                const target = e.target as HTMLTextAreaElement;
+                const start = target.selectionStart;
+                const end = target.selectionEnd;
+                const newValue = value.substring(0, start) + cleanText + value.substring(end);
+                 
+                onChange(newValue);
+                setTimeout(() => {
+                    if (target) {
+                        target.selectionStart = target.selectionEnd = start + cleanText.length;
+                    }
+                }, 0);
+            }}
             {...props}
         />
     );

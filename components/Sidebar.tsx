@@ -28,6 +28,7 @@ import {
   Clock,
   Zap,
   ChevronDown,
+  Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 
@@ -206,16 +207,16 @@ const Sidebar = React.memo(function Sidebar({
       <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/[0.03] to-transparent pointer-events-none" />
 
       {/* Logo Section */}
-      <div className="h-24 flex items-center px-6 border-b border-white/5 relative overflow-hidden shrink-0 bg-black">
+      <div className="h-16 flex items-center px-6 border-b border-white/5 relative overflow-hidden shrink-0 bg-black">
         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent pointer-events-none" />
         <div className="flex items-center justify-center w-full relative z-10 transition-all duration-300">
         <div className="flex items-center justify-center w-full relative z-10 transition-all duration-300">
           {!isCollapsed ? (
             <div className="flex flex-col items-center">
               <span className="font-black text-2xl tracking-tighter text-white italic leading-none">
-                APEX<span className="text-white/40">LEDGER</span>
+                APEX<span className="text-white/30">LEDGER</span>
               </span>
-              <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/30 mt-1.5">Elite Terminal Core</span>
+              <span className="text-[8px] font-black uppercase tracking-[0.3em] text-white/20 mt-1">Elite Terminal Core</span>
             </div>
           ) : (
              <div className="relative w-10 h-10 bg-black flex items-center justify-center">
@@ -235,11 +236,11 @@ const Sidebar = React.memo(function Sidebar({
       {/* Toggle Button */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-28 w-6 h-12 bg-[#0a0a0a] border border-white/10 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-[#151515] transition-all z-[100] group hover:scale-110 shadow-[5px_0_20px_rgba(0,0,0,0.9)]"
+        className="absolute -right-3 top-2 w-6 h-12 bg-gradient-to-b from-[#1a1a1a] to-[#050505] border border-white/10 hover:border-sky-500/30 rounded-full flex items-center justify-center text-white/40 hover:text-sky-400 transition-all z-[100] group hover:scale-105 shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(14,165,233,0.2)]"
       >
         <ChevronLeft
-          size={12}
-          strokeWidth={4}
+          size={14}
+          strokeWidth={3}
           className={`transition-transform duration-500 ${
             isCollapsed ? "rotate-180" : ""
           }`}
@@ -250,27 +251,45 @@ const Sidebar = React.memo(function Sidebar({
       <div className="flex-1 overflow-y-auto scrollbar-hide py-8 px-3 space-y-4 relative z-10 bg-black">
         
         {/* AI Chat Button */}
-        <Link href="/chat-with-ai" className="block mb-6">
+        {/* AI Chat Button */}
+        <Link href="/chat-with-ai" className="block mb-6 relative group/ai">
           <div className={`
-            relative flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all group overflow-hidden border
+            relative flex items-center gap-3 px-4 py-4 rounded-3xl transition-all duration-500 overflow-hidden border
             ${pathname === '/chat-with-ai' 
-              ? 'bg-white/10 text-white border-white/20 shadow-[0_5px_20px_rgba(0,0,0,0.5)]' 
-              : 'bg-[#111] text-white/40 hover:text-white border-white/5 hover:border-white/10 hover:bg-white/5'}
+              ? 'bg-gradient-to-br from-indigo-500/20 via-purple-500/5 to-transparent border-indigo-500/30 shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)]' 
+              : 'bg-zinc-900/40 hover:bg-zinc-800/60 text-white/40 hover:text-white border-white/5 hover:border-white/10'}
           `}>
+             {/* Dynamic Noise Texture */}
+             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.15] mix-blend-overlay" />
+             
+             {/* Active Beam */}
              {pathname === '/chat-with-ai' && (
-              <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10" />
-            )}
-            <div className={`shrink-0 ${isCollapsed ? 'mx-auto' : ''}`}>
-               <Zap size={18} className={`${pathname === '/chat-with-ai' ? 'text-white' : 'text-white/40 group-hover:text-white'} transition-colors`} />
+                <div className="absolute top-0 left-0 w-[2px] h-full bg-gradient-to-b from-transparent via-indigo-400 to-transparent shadow-[0_0_15px_1px_rgba(99,102,241,0.8)]" />
+             )}
+             
+            <div className={`shrink-0 relative z-10 ${isCollapsed ? 'mx-auto' : ''}`}>
+               <div className={`p-2 rounded-xl transition-all duration-500 ${pathname === '/chat-with-ai' ? 'bg-indigo-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.4)]' : 'bg-white/5 text-white/30 group-hover/ai:text-indigo-300 group-hover/ai:bg-indigo-500/20 group-hover/ai:scale-110 group-hover/ai:rotate-12'}`}>
+                   <Sparkles size={18} strokeWidth={2} className={pathname === '/chat-with-ai' ? 'animate-pulse' : ''} />
+               </div>
             </div>
+            
             {!isCollapsed && (
-              <div className="flex flex-col">
-                <span className={`text-sm font-bold tracking-tight ${pathname === '/chat-with-ai' ? 'text-white' : 'text-white/70 group-hover:text-white'}`}>
-                  AI Companion
+              <div className="flex flex-col relative z-10">
+                <div className="flex items-center gap-2">
+                    <span className={`text-[13px] font-black tracking-wider uppercase ${pathname === '/chat-with-ai' ? 'text-white' : 'text-white/60 group-hover/ai:text-white transition-colors'}`}>
+                      AI Companion
+                    </span>
+                    {/* Status Dot */}
+                    <div className={`w-1.5 h-1.5 rounded-full ${pathname === '/chat-with-ai' ? 'bg-indigo-400 animate-ping' : 'bg-emerald-500/50 group-hover/ai:bg-emerald-400 transition-colors'}`} />
+                </div>
+                <span className={`text-[9px] font-bold uppercase tracking-[0.2em] ${pathname === '/chat-with-ai' ? 'text-indigo-300/80' : 'text-white/20 group-hover/ai:text-white/40 transition-colors'}`}>
+                    Neural Architecture
                 </span>
-                <span className="text-[9px] uppercase tracking-wider opacity-40 group-hover:opacity-60 transition-opacity">Full Logic Access</span>
               </div>
             )}
+            
+            {/* Hover Shine Effect */}
+             <div className="absolute inset-0 translate-x-[-100%] group-hover/ai:translate-x-[100%] transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent pointer-events-none" />
           </div>
         </Link>
         <div className="h-px bg-white/5 my-4" />
