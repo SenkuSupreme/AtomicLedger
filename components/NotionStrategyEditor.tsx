@@ -1292,7 +1292,7 @@ export default function NotionStrategyEditor({ strategyId, onBack, initialIsTemp
             if (data._id && !isSaving) {
                 handleSave(true);
             }
-        }, 30000); // Strategy auto-save slightly longer to prevent large payload spam
+        }, 15000); // Auto-save after 15s of inactivity (matched to Note Editor)
 
         return () => clearTimeout(timer);
     }, [data, handleSave, isSaving]);
