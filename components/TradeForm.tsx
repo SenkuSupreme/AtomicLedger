@@ -1,7 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
-import { Layers, Zap, Upload, X, Image as ImageIcon } from "lucide-react";
+import { Layers, Zap, Upload, X, Image as ImageIcon, Plus, Check } from "lucide-react";
+
+// Define which fields support custom options
+const CUSTOMIZABLE_FIELDS = [
+  'dailyBias',
+  'sessions',
+  'marketEnvironment',
+  'executionArchitecture',
+  'signalTrigger',
+  'technicalConfluence'
+] as const;
+
+type CustomizableField = typeof CUSTOMIZABLE_FIELDS[number];
 
 export default function TradeForm({
   isBacktest = false,
@@ -20,6 +32,10 @@ export default function TradeForm({
   const [strategies, setStrategies] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [screenshots, setScreenshots] = useState<string[]>([]);
+  const [customOptions, setCustomOptions] = useState<Record<string, string[]>>({});
+  const [addingCustom, setAddingCustom] = useState<string | null>(null);
+  const [customInputValue, setCustomInputValue] = useState("");
+  const customInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch("/api/portfolios")
@@ -39,12 +55,55 @@ export default function TradeForm({
       .then((data) => {
         const stratList = Array.isArray(data) ? data : [];
         setStrategies(stratList);
-        // Prompt user if no strategies exist
-        if (stratList.length === 0 && !isBacktest) {
-           // We can handle this in the UI below
-        }
       });
-  }, [setValue, isBacktest]);
+
+    // Fetch custom options
+    fetch("/api/custom-trade-options")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.options) {
+          setCustomOptions(data.options);
+        }
+      })
+      .catch(console.error);
+  }, [setValue]);
+
+  // Focus custom input when it appears
+  useEffect(() => {
+    if (addingCustom && customInputRef.current) {
+      customInputRef.current.focus();
+    }
+  }, [addingCustom]);
+
+  const handleAddCustomOption = async (fieldName: string) => {
+    if (!customInputValue.trim()) {
+      setAddingCustom(null);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/custom-trade-options", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fieldName, value: customInputValue.trim() }),
+      });
+
+      if (res.ok) {
+        // Add to local state
+        setCustomOptions((prev) => ({
+          ...prev,
+          [fieldName]: [...(prev[fieldName] || []), customInputValue.trim()],
+        }));
+        // Set the value in the form
+        setValue(fieldName, customInputValue.trim());
+      }
+    } catch (error) {
+      console.error("Error adding custom option:", error);
+    }
+
+    setCustomInputValue("");
+    setAddingCustom(null);
+  };
 
   const watchedValues = watch();
 
@@ -312,110 +371,302 @@ export default function TradeForm({
 
       <div className="grid grid-cols-2 gap-6">
         <div>
-          <label className="block text-[10px] font-black uppercase text-gray-400 mb-2 tracking-[0.2em]">
-            Bias
-          </label>
-          <select
-            {...register("dailyBias")}
-            className="w-full bg-[#111] border border-white/10 rounded-lg px-3 py-3 text-white focus:border-white/30 outline-none appearance-none"
-          >
-            <option value="">Select Bias</option>
-            <option value="Bullish">Bullish</option>
-            <option value="Bearish">Bearish</option>
-            <option value="Bullish Ranging">Bullish Ranging</option>
-            <option value="Bearish Ranging">Bearish Ranging</option>
-          </select>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-[10px] font-black uppercase text-gray-400 tracking-[0.2em]">
+              Bias
+            </label>
+            <button 
+              type="button" 
+              onClick={() => setAddingCustom(addingCustom === 'dailyBias' ? null : 'dailyBias')}
+              className="text-gray-500 hover:text-sky-400 transition-colors"
+            >
+              {addingCustom === 'dailyBias' ? <X size={14} /> : <Plus size={14} />}
+            </button>
+          </div>
+          {addingCustom === 'dailyBias' ? (
+            <div className="flex gap-2">
+              <input
+                ref={customInputRef}
+                value={customInputValue}
+                onChange={(e) => setCustomInputValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCustomOption('dailyBias'))}
+                className="flex-1 bg-[#111] border border-sky-500/30 rounded-lg px-3 py-3 text-white outline-none"
+                placeholder="Custom Bias..."
+              />
+              <button 
+                type="button"
+                onClick={() => handleAddCustomOption('dailyBias')}
+                className="p-3 bg-sky-500/10 border border-sky-500/30 rounded-lg text-sky-400 hover:bg-sky-500/20"
+              >
+                <Check size={16} />
+              </button>
+            </div>
+          ) : (
+            <select
+              {...register("dailyBias")}
+              className="w-full bg-[#111] border border-white/10 rounded-lg px-3 py-3 text-white focus:border-white/30 outline-none appearance-none"
+            >
+              <option value="">Select Bias</option>
+              <option value="Bullish">Bullish</option>
+              <option value="Bearish">Bearish</option>
+              <option value="Bullish Ranging">Bullish Ranging</option>
+              <option value="Bearish Ranging">Bearish Ranging</option>
+              {customOptions.dailyBias?.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          )}
         </div>
         <div>
-          <label className="block text-[10px] font-black uppercase text-gray-400 mb-2 tracking-[0.2em]">
-            Session <span className="text-rose-500">*</span>
-          </label>
-          <select
-            {...register("sessions", { required: true })}
-            className="w-full bg-[#111] border border-white/10 rounded-lg px-3 py-3 text-white focus:border-white/30 outline-none appearance-none"
-          >
-            <option value="">Select Session</option>
-            <option value="Sydney">Sydney</option>
-            <option value="Tokyo">Tokyo</option>
-            <option value="London">London</option>
-            <option value="New York">New York</option>
-            <option value="Asian-London Overlap">Asian-London Overlap</option>
-            <option value="London-NY Overlap">London-NY Overlap</option>
-            <option value="London Pre-Market">London Pre-Market</option>
-            <option value="US Pre-Market">US Pre-Market</option>
-            <option value="After Hours">After Hours</option>
-          </select>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-[10px] font-black uppercase text-gray-400 tracking-[0.2em]">
+              Session <span className="text-rose-500">*</span>
+            </label>
+            <button 
+              type="button" 
+              onClick={() => setAddingCustom(addingCustom === 'sessions' ? null : 'sessions')}
+              className="text-gray-500 hover:text-sky-400 transition-colors"
+            >
+              {addingCustom === 'sessions' ? <X size={14} /> : <Plus size={14} />}
+            </button>
+          </div>
+          {addingCustom === 'sessions' ? (
+            <div className="flex gap-2">
+              <input
+                ref={customInputRef}
+                value={customInputValue}
+                onChange={(e) => setCustomInputValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCustomOption('sessions'))}
+                className="flex-1 bg-[#111] border border-sky-500/30 rounded-lg px-3 py-3 text-white outline-none"
+                placeholder="Custom Session..."
+              />
+              <button 
+                type="button"
+                onClick={() => handleAddCustomOption('sessions')}
+                className="p-3 bg-sky-500/10 border border-sky-500/30 rounded-lg text-sky-400 hover:bg-sky-500/20"
+              >
+                <Check size={16} />
+              </button>
+            </div>
+          ) : (
+            <select
+              {...register("sessions", { required: true })}
+              className="w-full bg-[#111] border border-white/10 rounded-lg px-3 py-3 text-white focus:border-white/30 outline-none appearance-none"
+            >
+              <option value="">Select Session</option>
+              <option value="Sydney">Sydney</option>
+              <option value="Tokyo">Tokyo</option>
+              <option value="London">London</option>
+              <option value="New York">New York</option>
+              <option value="Asian-London Overlap">Asian-London Overlap</option>
+              <option value="London-NY Overlap">London-NY Overlap</option>
+              <option value="London Pre-Market">London Pre-Market</option>
+              <option value="US Pre-Market">US Pre-Market</option>
+              <option value="After Hours">After Hours</option>
+              {customOptions.sessions?.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-6">
         <div>
-          <label className="block text-xs font-mono uppercase text-gray-400 mb-2">
-            Market Environment
-          </label>
-          <select
-            {...register("marketEnvironment")}
-            className="w-full bg-[#111] border border-white/10 rounded-lg px-3 py-3 text-white focus:border-white/30 outline-none appearance-none"
-          >
-            <option value="">Select Environment</option>
-            <option value="Trend">Trend</option>
-            <option value="Range">Range</option>
-            <option value="Volatility">Volatility</option>
-            <option value="Expansion">Expansion</option>
-            <option value="Consolidation">Consolidation</option>
-          </select>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-mono uppercase text-gray-400">
+              Market Environment
+            </label>
+            <button 
+              type="button" 
+              onClick={() => setAddingCustom(addingCustom === 'marketEnvironment' ? null : 'marketEnvironment')}
+              className="text-gray-500 hover:text-sky-400 transition-colors"
+            >
+              {addingCustom === 'marketEnvironment' ? <X size={14} /> : <Plus size={14} />}
+            </button>
+          </div>
+          {addingCustom === 'marketEnvironment' ? (
+            <div className="flex gap-2">
+              <input
+                ref={customInputRef}
+                value={customInputValue}
+                onChange={(e) => setCustomInputValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCustomOption('marketEnvironment'))}
+                className="flex-1 bg-[#111] border border-sky-500/30 rounded-lg px-3 py-3 text-white outline-none"
+                placeholder="Custom Env..."
+              />
+              <button 
+                type="button"
+                onClick={() => handleAddCustomOption('marketEnvironment')}
+                className="p-3 bg-sky-500/10 border border-sky-500/30 rounded-lg text-sky-400 hover:bg-sky-500/20"
+              >
+                <Check size={16} />
+              </button>
+            </div>
+          ) : (
+            <select
+              {...register("marketEnvironment")}
+              className="w-full bg-[#111] border border-white/10 rounded-lg px-3 py-3 text-white focus:border-white/30 outline-none appearance-none"
+            >
+              <option value="">Select Environment</option>
+              <option value="Trend">Trend</option>
+              <option value="Range">Range</option>
+              <option value="Volatility">Volatility</option>
+              <option value="Expansion">Expansion</option>
+              <option value="Consolidation">Consolidation</option>
+              {customOptions.marketEnvironment?.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          )}
         </div>
         <div>
-          <label className="block text-xs font-mono uppercase text-gray-400 mb-2">
-            Execution Architecture
-          </label>
-          <select
-            {...register("executionArchitecture")}
-            className="w-full bg-[#111] border border-white/10 rounded-lg px-3 py-3 text-white focus:border-white/30 outline-none appearance-none"
-          >
-            <option value="">Select Architecture</option>
-            <option value="Limit Order">Limit Order</option>
-            <option value="Market Execution">Market Execution</option>
-            <option value="Aggressive Entry">Aggressive Entry</option>
-            <option value="Conservative Entry">Conservative Entry</option>
-            <option value="Breakout">Breakout</option>
-            <option value="Retest">Retest</option>
-          </select>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-mono uppercase text-gray-400">
+              Execution Architecture
+            </label>
+            <button 
+              type="button" 
+              onClick={() => setAddingCustom(addingCustom === 'executionArchitecture' ? null : 'executionArchitecture')}
+              className="text-gray-500 hover:text-sky-400 transition-colors"
+            >
+              {addingCustom === 'executionArchitecture' ? <X size={14} /> : <Plus size={14} />}
+            </button>
+          </div>
+          {addingCustom === 'executionArchitecture' ? (
+            <div className="flex gap-2">
+              <input
+                ref={customInputRef}
+                value={customInputValue}
+                onChange={(e) => setCustomInputValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCustomOption('executionArchitecture'))}
+                className="flex-1 bg-[#111] border border-sky-500/30 rounded-lg px-3 py-3 text-white outline-none"
+                placeholder="Custom Arch..."
+              />
+              <button 
+                type="button"
+                onClick={() => handleAddCustomOption('executionArchitecture')}
+                className="p-3 bg-sky-500/10 border border-sky-500/30 rounded-lg text-sky-400 hover:bg-sky-500/20"
+              >
+                <Check size={16} />
+              </button>
+            </div>
+          ) : (
+            <select
+              {...register("executionArchitecture")}
+              className="w-full bg-[#111] border border-white/10 rounded-lg px-3 py-3 text-white focus:border-white/30 outline-none appearance-none"
+            >
+              <option value="">Select Architecture</option>
+              <option value="Limit Order">Limit Order</option>
+              <option value="Market Execution">Market Execution</option>
+              <option value="Aggressive Entry">Aggressive Entry</option>
+              <option value="Conservative Entry">Conservative Entry</option>
+              <option value="Breakout">Breakout</option>
+              <option value="Retest">Retest</option>
+              {customOptions.executionArchitecture?.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-6">
         <div>
-          <label className="block text-xs font-mono uppercase text-gray-400 mb-2">
-            Signal Trigger
-          </label>
-          <select
-            {...register("signalTrigger")}
-            className="w-full bg-[#111] border border-white/10 rounded-lg px-3 py-3 text-white focus:border-white/30 outline-none appearance-none"
-          >
-            <option value="">Select Trigger</option>
-            <option value="Fair Value Gap">Fair Value Gap</option>
-            <option value="Order Block">Order Block</option>
-            <option value="Breaker Block">Breaker Block</option>
-            <option value="Liquidity Sweep">Liquidity Sweep</option>
-            <option value="MTF Alignment">MTF Alignment</option>
-          </select>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-mono uppercase text-gray-400">
+              Signal Trigger
+            </label>
+            <button 
+              type="button" 
+              onClick={() => setAddingCustom(addingCustom === 'signalTrigger' ? null : 'signalTrigger')}
+              className="text-gray-500 hover:text-sky-400 transition-colors"
+            >
+              {addingCustom === 'signalTrigger' ? <X size={14} /> : <Plus size={14} />}
+            </button>
+          </div>
+          {addingCustom === 'signalTrigger' ? (
+            <div className="flex gap-2">
+              <input
+                ref={customInputRef}
+                value={customInputValue}
+                onChange={(e) => setCustomInputValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCustomOption('signalTrigger'))}
+                className="flex-1 bg-[#111] border border-sky-500/30 rounded-lg px-3 py-3 text-white outline-none"
+                placeholder="Custom Trigger..."
+              />
+              <button 
+                type="button"
+                onClick={() => handleAddCustomOption('signalTrigger')}
+                className="p-3 bg-sky-500/10 border border-sky-500/30 rounded-lg text-sky-400 hover:bg-sky-500/20"
+              >
+                <Check size={16} />
+              </button>
+            </div>
+          ) : (
+            <select
+              {...register("signalTrigger")}
+              className="w-full bg-[#111] border border-white/10 rounded-lg px-3 py-3 text-white focus:border-white/30 outline-none appearance-none"
+            >
+              <option value="">Select Trigger</option>
+              <option value="Fair Value Gap">Fair Value Gap</option>
+              <option value="Order Block">Order Block</option>
+              <option value="Breaker Block">Breaker Block</option>
+              <option value="Liquidity Sweep">Liquidity Sweep</option>
+              <option value="MTF Alignment">MTF Alignment</option>
+              {customOptions.signalTrigger?.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          )}
         </div>
         <div>
-          <label className="block text-xs font-mono uppercase text-gray-400 mb-2">
-            Technical Confluence
-          </label>
-          <select
-            {...register("technicalConfluence")}
-            className="w-full bg-[#111] border border-white/10 rounded-lg px-3 py-3 text-white focus:border-white/30 outline-none appearance-none"
-          >
-            <option value="">Select Confluence</option>
-            <option value="HTF Bias">HTF Bias</option>
-            <option value="Key Level">Key Level</option>
-            <option value="Fibonacci">Fibonacci</option>
-            <option value="Indicator Cross">Indicator Cross</option>
-            <option value="Correlated Asset">Correlated Asset</option>
-          </select>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-mono uppercase text-gray-400">
+              Technical Confluence
+            </label>
+            <button 
+              type="button" 
+              onClick={() => setAddingCustom(addingCustom === 'technicalConfluence' ? null : 'technicalConfluence')}
+              className="text-gray-500 hover:text-sky-400 transition-colors"
+            >
+              {addingCustom === 'technicalConfluence' ? <X size={14} /> : <Plus size={14} />}
+            </button>
+          </div>
+          {addingCustom === 'technicalConfluence' ? (
+            <div className="flex gap-2">
+              <input
+                ref={customInputRef}
+                value={customInputValue}
+                onChange={(e) => setCustomInputValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCustomOption('technicalConfluence'))}
+                className="flex-1 bg-[#111] border border-sky-500/30 rounded-lg px-3 py-3 text-white outline-none"
+                placeholder="Custom Confluence..."
+              />
+              <button 
+                type="button"
+                onClick={() => handleAddCustomOption('technicalConfluence')}
+                className="p-3 bg-sky-500/10 border border-sky-500/30 rounded-lg text-sky-400 hover:bg-sky-500/20"
+              >
+                <Check size={16} />
+              </button>
+            </div>
+          ) : (
+            <select
+              {...register("technicalConfluence")}
+              className="w-full bg-[#111] border border-white/10 rounded-lg px-3 py-3 text-white focus:border-white/30 outline-none appearance-none"
+            >
+              <option value="">Select Confluence</option>
+              <option value="HTF Bias">HTF Bias</option>
+              <option value="Key Level">Key Level</option>
+              <option value="Fibonacci">Fibonacci</option>
+              <option value="Indicator Cross">Indicator Cross</option>
+              <option value="Correlated Asset">Correlated Asset</option>
+              {customOptions.technicalConfluence?.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 

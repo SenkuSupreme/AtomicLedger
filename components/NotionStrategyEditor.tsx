@@ -538,19 +538,60 @@ AutoResizeTextarea.displayName = "AutoResizeTextarea";
 
 // --- BLOCK COMPONENT ---
 
-const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAbove, isLast, isFocused, onImageClick, onFocus }: any) => {
+const EditorBlock = React.memo(({ block, updateBlock, removeBlock, isLast, isFocused, onImageClick, onFocus, onRemoveWithFocus, blockIndex, addBlockAt }: any) => {
     const dragControls = useDragControls();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, showAbove: false });
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLElement | null>(null);
+    const blockRef = useRef<HTMLLIElement>(null);
 
     // Auto-focus effect
     useEffect(() => {
         if (isFocused && textareaRef.current) {
             textareaRef.current.focus();
-            // Optional: Move cursor to end?
+            // Move cursor to end
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(textareaRef.current);
+            range.collapse(false);
+            selection?.removeAllRanges();
+            selection?.addRange(range);
         }
     }, [isFocused]);
+
+    // Intelligent menu positioning
+    useEffect(() => {
+        if (isMenuOpen && blockRef.current) {
+            const rect = blockRef.current.getBoundingClientRect();
+            const menuHeight = 400; // Expected max menu height
+            const viewportHeight = window.innerHeight;
+            const spaceBelow = viewportHeight - rect.bottom;
+            const spaceAbove = rect.top;
+            
+            // Determine if menu should show above or below
+            const showAbove = spaceBelow < menuHeight && spaceAbove > spaceBelow;
+            
+            setMenuPosition({
+                top: showAbove ? rect.top - 8 : rect.bottom + 8,
+                left: rect.left + 40,
+                showAbove
+            });
+        }
+    }, [isMenuOpen]);
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        if (isMenuOpen) {
+            const handleClickOutside = (e: MouseEvent) => {
+                if (blockRef.current && !blockRef.current.contains(e.target as Node)) {
+                    setIsMenuOpen(false);
+                }
+            };
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [isMenuOpen]);
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -601,10 +642,35 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAbove
                 return;
             }
             e.preventDefault();
-            addBlockAbove(block.id, 'text', true);
+            addBlockAt(block.id, 'text', true);
         } else if (e.key === 'Backspace' && !block.content) {
-            e.preventDefault(); // Prevent deleting the previous block's char
-            removeBlock(block.id);
+            e.preventDefault();
+            if (blockIndex > 0) {
+                onRemoveWithFocus(block.id, blockIndex - 1);
+            } else {
+                removeBlock(block.id);
+            }
+        } else if (e.key === 'ArrowUp') {
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                if (range.startOffset === 0 && blockIndex > 0) {
+                    const isAtStart = !range.startContainer.previousSibling || (range.startContainer === textareaRef.current && range.startOffset === 0);
+                    if (isAtStart) {
+                        e.preventDefault();
+                        onRemoveWithFocus(null, blockIndex - 1);
+                    }
+                }
+            }
+        } else if (e.key === 'ArrowDown') {
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const isAtEnd = true; // Simplified check
+                if (isAtEnd) {
+                    onRemoveWithFocus(null, blockIndex + 1);
+                }
+            }
         }
     };
 
@@ -679,7 +745,7 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAbove
                                     src={block.content} 
                                     alt="Strategy Asset" 
                                     draggable="false"
-                                    className="w-full h-auto object-contain transition-transform duration-700 group-hover/img:scale-[1.01] cursor-zoom-in pointer-events-none select-none"
+                                    className="w-full h-auto object-contain transition-transform duration-700 group-hover/img:scale-[1.01] cursor-zoom-in select-none"
                                     style={{ maxHeight: 'none' }}
                                     onClick={() => onImageClick(block.content)}
                                 />
@@ -729,6 +795,13 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAbove
                                              className="p-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-white transition-all shadow-lg active:scale-95 text-[9px] font-black uppercase tracking-wider"
                                          >
                                              Reset Size
+                                         </button>
+                                         <button 
+                                             onClick={() => onImageClick(block.content)}
+                                             className="p-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-white transition-all shadow-lg active:scale-95"
+                                             title="Expand Image"
+                                         >
+                                             <Maximize2 size={16} />
                                          </button>
                                          <button onClick={() => fileInputRef.current?.click()} className="p-2.5 bg-sky-500 hover:bg-sky-400 rounded-xl text-black transition-all shadow-lg active:scale-95">
                                              <Edit3 size={16} />
@@ -784,10 +857,15 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAbove
         <Reorder.Item 
             value={block} 
             id={block.id}
+            ref={blockRef}
             dragListener={false}
             dragControls={dragControls}
             layout="position"
-            whileDrag={{ zIndex: 100 }}
+            whileDrag={{ zIndex: 1000 }}
+            style={{ 
+                zIndex: isMenuOpen ? 1000 : 1,
+                willChange: "transform"
+            }}
             transition={{ 
                 type: "spring", 
                 stiffness: 1000, 
@@ -795,59 +873,77 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAbove
                 mass: 0.2,
                 layout: { type: "spring", stiffness: 1000, damping: 60, mass: 0.1 }
             }}
-            style={{ zIndex: isMenuOpen ? 1000 : 1 }}
-            className={`group relative flex items-start gap-6 px-10 py-1.5 rounded-[2rem] hover:bg-white/[0.01] transition-colors duration-150 will-change-transform overflow-visible`}
+            className="group/block relative flex items-start gap-4 mb-1"
         >
-            <div className={`${isMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 group-hover:opacity-100 -translate-y-2 group-hover:translate-y-0'} absolute -left-4 -top-6 flex flex-row items-center gap-1 z-[100] transition-all duration-300 bg-[#0F0F0F] p-1 rounded-xl border border-white/5 shadow-2xl pointer-events-auto`}>
-                <button 
-                    onClick={() => addBlockAbove(block.id, 'text', true)}
-                    className="p-1.5 text-white/40 hover:text-sky-400 hover:bg-sky-500/10 rounded-lg transition-all"
-                    title="Add block below"
-                >
-                    <Plus size={14} />
-                </button>
+            <div className="flex items-center gap-1 mt-1.5 opacity-0 group-hover/block:opacity-100 transition-opacity sticky top-0">
                 <div 
+                    {...dragControls}
                     onPointerDown={(e) => dragControls.start(e)}
-                    className="cursor-grab p-1.5 text-white/40 hover:text-sky-400 hover:bg-sky-500/10 rounded-lg active:cursor-grabbing transition-all border-x border-white/5 px-2"
-                    title="Drag to reorder"
+                    className="p-1.5 hover:bg-white/10 rounded-lg cursor-grab active:cursor-grabbing text-white/20 hover:text-white/60 transition-all"
                 >
-                    <GripVertical size={14} />
+                    <GripVertical size={16} />
                 </div>
                 <button 
-                    onClick={() => removeBlock(block.id)}
-                    className="p-1.5 text-white/40 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"
-                    title="Delete block"
+                    onClick={() => addBlockAt(block.id, 'text', true)}
+                    className="p-1.5 hover:bg-white/10 rounded-lg text-white/20 hover:text-white/60 transition-all"
                 >
-                    <Trash2 size={14} />
+                    <Plus size={16} />
                 </button>
+                <button 
+                    onClick={() => removeBlock(block.id)}
+                    className="p-1.5 hover:bg-rose-500/20 rounded-lg text-white/20 hover:text-rose-500 transition-all"
+                >
+                    <Trash2 size={16} />
+                </button>
+            </div>
+
+            <div className="flex-1 w-full relative">
                 {isMenuOpen && (
-                    <div className="absolute left-full ml-4 top-0 w-64 bg-[#0A0A0A] border border-white/10 rounded-2xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)] z-[9999] p-2 overflow-hidden animate-in fade-in slide-in-from-left-2 duration-200">
-                        <div className="px-3 py-2 mb-1 border-b border-white/5">
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 italic">Transformation Engine</span>
-                        </div>
-                        <div className="max-h-[350px] overflow-y-auto scrollbar-hide py-1">
-                            {(['h1', 'h2', 'h3', 'text', 'todo', 'callout', 'bullet', 'quote', 'image', 'code', 'divider'] as BlockType[]).map(t => (
-                                <button 
-                                    key={t}
+                    <div 
+                        style={{ 
+                            position: 'fixed',
+                            top: `${menuPosition.top}px`,
+                            left: `${menuPosition.left}px`,
+                            transform: menuPosition.showAbove ? 'translateY(-100%)' : 'none',
+                            zIndex: 1000
+                        }}
+                        className="w-72 bg-zinc-900/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden py-2"
+                    >
+                        <div className="px-4 py-2 text-[10px] font-black text-white/20 uppercase tracking-[0.2em] border-b border-white/5 mb-2">Basic Blocks</div>
+                        <div className="max-h-[300px] overflow-y-auto scrollbar-hide py-1">
+                            {[
+                                { type: 'text', icon: <Type size={14} />, label: 'Text', desc: 'Plain text architecture' },
+                                { type: 'h1', icon: <Heading1 size={14} />, label: 'Heading 1', desc: 'Large system header' },
+                                { type: 'h2', icon: <Heading2 size={14} />, label: 'Heading 2', desc: 'Medium section header' },
+                                { type: 'h3', icon: <Heading3 size={14} />, label: 'Heading 3', desc: 'Small details header' },
+                                { type: 'todo', icon: <CheckSquare size={14} />, label: 'To-do List', desc: 'Mechanical checklist' },
+                                { type: 'bullet', icon: <List size={14} />, label: 'Bullet List', desc: 'Simple bullet flow' },
+                                { type: 'callout', icon: <AlertCircle size={14} />, label: 'Callout', desc: 'Emphasis / mandate' },
+                                { type: 'quote', icon: <Quote size={14} />, label: 'Quote', desc: 'Trading wisdom' },
+                                { type: 'divider', icon: <Minus size={14} />, label: 'Divider', desc: 'Visual separation' },
+                                { type: 'image', icon: <ImageIcon size={14} />, label: 'Image', desc: 'Chart intel evidence' },
+                                { type: 'code', icon: <Terminal size={14} />, label: 'Code', desc: 'Algorithmic logic' },
+                            ].map((cmd) => (
+                                <button
+                                    key={cmd.type}
                                     onClick={() => {
-                                        updateBlock(block.id, { type: t, content: block.content === '/' || block.content === ' /' ? '' : block.content });
+                                        updateBlock(block.id, { type: cmd.type as BlockType, content: '' });
                                         setIsMenuOpen(false);
                                     }}
-                                    className="w-full text-left px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-white hover:bg-white/5 rounded-xl flex items-center gap-4 transition-all group/item"
+                                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left group/item"
                                 >
-                                    <div className="p-1.5 bg-white/5 rounded-lg group-hover/item:text-sky-400 group-hover/item:bg-sky-500/10 transition-all">
-                                        <BlockIcon type={t} />
+                                    <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center text-white/40 group-hover/item:text-sky-400 group-hover/item:bg-sky-400/10 transition-all">
+                                        <BlockIcon type={cmd.type as BlockType} />
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="capitalize">{t === 'text' ? 'Paragraph' : t === 'todo' ? 'Checklist' : t === 'image' ? 'Evidence Image' : t === 'code' ? 'Algorithmic Logic' : t === 'bullet' ? 'Unordered List' : t}</span>
+                                        <span className="text-sm font-bold text-white/90">{cmd.label}</span>
+                                        <span className="text-[10px] text-white/30 uppercase tracking-wider">{cmd.desc}</span>
                                     </div>
                                 </button>
                             ))}
                         </div>
                     </div>
                 )}
-            </div>
-            <div className="flex-1 min-w-0">
                 {renderContent()}
             </div>
         </Reorder.Item>
@@ -1041,20 +1137,61 @@ export default function NotionStrategyEditor({ strategyId, onBack, initialIsTemp
         }));
     }, []);
 
-    const addBlockAt = useCallback((id: string, type: BlockType = 'text', after: boolean = true) => {
-        const newId = Math.random().toString(36).substr(2, 9);
+    const removeBlockWithFocus = useCallback((id: string | null, focusIndex: number) => {
+        if (id === null) {
+            setData(prev => {
+                if (prev.blocks[focusIndex]) {
+                    setTimeout(() => {
+                        setFocusedBlockId(prev.blocks[focusIndex].id);
+                    }, 0);
+                }
+                return prev;
+            });
+            return;
+        }
+
         setData(prev => {
             const index = prev.blocks.findIndex(b => b.id === id);
+            const newBlocks = prev.blocks.filter(b => b.id !== id);
+            
+            // Set focus to the target index in the remaining blocks
+            setTimeout(() => {
+                const targetBlock = newBlocks[focusIndex];
+                if (targetBlock) {
+                    setFocusedBlockId(targetBlock.id);
+                } else if (newBlocks.length > 0) {
+                    setFocusedBlockId(newBlocks[newBlocks.length - 1].id);
+                }
+            }, 0);
+            
+            return {
+                ...prev,
+                blocks: newBlocks
+            };
+        });
+    }, []);
+
+    const addBlockAt = useCallback((idOrIndex: string | number, type: BlockType = 'text', after: boolean = true) => {
+        const newId = Math.random().toString(36).substr(2, 9);
+        setData(prev => {
+            let index: number;
+            if (typeof idOrIndex === 'string') {
+                index = prev.blocks.findIndex(b => b.id === idOrIndex);
+                if (after) index += 1;
+            } else {
+                index = idOrIndex;
+            }
+
             const newBlock: Block = {
                 id: newId,
                 type,
                 content: ''
             };
             const newBlocks = [...prev.blocks];
-            newBlocks.splice(after ? index + 1 : index, 0, newBlock);
+            newBlocks.splice(index, 0, newBlock);
             return { ...prev, blocks: newBlocks };
         });
-        setFocusedBlockId(newId);
+        setTimeout(() => setFocusedBlockId(newId), 0);
     }, []);
 
     const selectTemplate = (template: Block[]) => {
@@ -1380,7 +1517,7 @@ export default function NotionStrategyEditor({ strategyId, onBack, initialIsTemp
                                     axis="y" 
                                     values={data.blocks} 
                                     onReorder={(newBlocks) => setData(prev => ({ ...prev, blocks: newBlocks }))}
-                                    className="space-y-0"
+                                    className="space-y-0 pb-32 relative"
                                 >
                                     {data.blocks.map((block, idx) => (
                                         <EditorBlock 
@@ -1388,23 +1525,28 @@ export default function NotionStrategyEditor({ strategyId, onBack, initialIsTemp
                                             block={block} 
                                             updateBlock={updateBlock} 
                                             removeBlock={removeBlock}
-                                            addBlockAbove={addBlockAt}
+                                            addBlockAt={addBlockAt}
                                             isLast={idx === data.blocks.length - 1}
                                             isFocused={focusedBlockId === block.id}
                                             onFocus={setFocusedBlockId}
                                             onImageClick={setActiveImage}
+                                            onRemoveWithFocus={removeBlockWithFocus}
+                                            blockIndex={idx}
                                         />
                                     ))}
-                                </Reorder.Group>
-                                
-                                <div className="mt-20 pt-20 border-t border-border text-center">
-                                    <button 
-                                        onClick={() => addBlockAt(data.blocks[data.blocks.length-1]?.id, 'text', true)}
-                                        className="inline-flex items-center gap-3 px-8 py-4 bg-foreground/5 hover:bg-foreground/10 rounded-2xl text-[11px] font-black uppercase tracking-widest text-muted-foreground/40 hover:text-foreground transition-all"
+
+                                    {/* Notion-like Click-to-add Area */}
+                                    <div 
+                                        className="w-full h-[400px] cursor-text group/add mt-4"
+                                        onClick={() => addBlockAt(data.blocks.length)}
                                     >
-                                        <Plus size={18} /> Append New Content Block
-                                    </button>
-                                </div>
+                                        <div className="opacity-0 group-hover/add:opacity-100 transition-opacity pl-24 pointer-events-none">
+                                            <span className="text-[10px] font-black text-white/10 uppercase tracking-[0.4em] italic">
+                                                Click to expand the blueprint architecture...
+                                            </span>
+                                        </div>
+                                    </div>
+                                </Reorder.Group>
                             </div>
                         ) : (
                             <div className="animate-in fade-in slide-in-from-top-4 duration-700">

@@ -315,28 +315,60 @@ const AutoResizeTextarea = React.forwardRef<HTMLTextAreaElement, any>(({ value, 
 });
 AutoResizeTextarea.displayName = "AutoResizeTextarea";
 
-const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAbove, isLast, isFocused, onImageClick, onFocus }: any) => {
+const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAbove, isLast, isFocused, onImageClick, onFocus, onRemoveWithFocus, blockIndex }: any) => {
     const dragControls = useDragControls();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, showAbove: false });
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLElement | null>(null);
     const menuButtonRef = useRef<HTMLDivElement>(null);
+    const blockRef = useRef<HTMLLIElement>(null);
 
     useEffect(() => {
         if (isFocused && textareaRef.current) {
             textareaRef.current.focus();
+            // Move cursor to end of content
+            const range = document.createRange();
+            const sel = window.getSelection();
+            if (textareaRef.current.childNodes.length > 0) {
+                range.selectNodeContents(textareaRef.current);
+                range.collapse(false); // false = collapse to end
+                sel?.removeAllRanges();
+                sel?.addRange(range);
+            }
         }
     }, [isFocused]);
 
-    // Update menu position when it opens
+    // Update menu position when it opens - check viewport bounds
     useEffect(() => {
-        if (isMenuOpen && menuButtonRef.current) {
-            const rect = menuButtonRef.current.getBoundingClientRect();
+        if (isMenuOpen && blockRef.current) {
+            const rect = blockRef.current.getBoundingClientRect();
+            const menuHeight = 400; // approximate menu height
+            const viewportHeight = window.innerHeight;
+            const spaceBelow = viewportHeight - rect.bottom;
+            const spaceAbove = rect.top;
+            
+            // Determine if menu should show above or below
+            const showAbove = spaceBelow < menuHeight && spaceAbove > spaceBelow;
+            
             setMenuPosition({
-                top: rect.top,
-                left: rect.right + 16 // 16px gap (ml-4)
+                top: showAbove ? rect.top - 8 : rect.bottom + 8,
+                left: rect.left + 40,
+                showAbove
             });
+        }
+    }, [isMenuOpen]);
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        if (isMenuOpen) {
+            const handleClickOutside = (e: MouseEvent) => {
+                if (blockRef.current && !blockRef.current.contains(e.target as Node)) {
+                    setIsMenuOpen(false);
+                }
+            };
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
         }
     }, [isMenuOpen]);
 
@@ -392,7 +424,42 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAbove
             addBlockAbove(block.id, 'text', true);
         } else if (e.key === 'Backspace' && !block.content) {
             e.preventDefault();
-            removeBlock(block.id);
+            // Focus previous block before removing
+            if (blockIndex > 0) {
+                onRemoveWithFocus(block.id, blockIndex - 1);
+            } else {
+                removeBlock(block.id);
+            }
+        } else if (e.key === 'ArrowUp') {
+            // Navigate to previous block when at the beginning of content
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                // Check if cursor is at the start (offset 0 and at first node)
+                if (range.startOffset === 0 && blockIndex > 0) {
+                    const isAtStart = !range.startContainer.previousSibling || 
+                        (range.startContainer === textareaRef.current && range.startOffset === 0);
+                    if (isAtStart) {
+                        e.preventDefault();
+                        onFocus(null); // Trigger parent to focus previous
+                        onRemoveWithFocus(null, blockIndex - 1); // Just focus, don't remove
+                    }
+                }
+            }
+        } else if (e.key === 'ArrowDown') {
+            // Navigate to next block when at the end of content
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const textLength = textareaRef.current?.textContent?.length || 0;
+                // Check if at end of content
+                if (range.endOffset >= textLength || 
+                    (range.endContainer === textareaRef.current && 
+                     range.endOffset === textareaRef.current.childNodes.length)) {
+                    // Let parent handle focus to next block
+                    // This is handled naturally by focus flow
+                }
+            }
         }
     };
 
@@ -454,16 +521,54 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAbove
                         <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" />
                         {block.content ? (
                             <div 
-                                className="group/img relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-zinc-900/50 resize-x"
-                                style={{ width: block.metadata?.width || '100%', maxWidth: '100%', minWidth: '200px' }}
+                                className="group/img relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-zinc-900/50"
+                                style={{ 
+                                    width: block.metadata?.width || '100%',
+                                    maxWidth: '100%',
+                                    minWidth: '200px'
+                                }}
                             >
                                 <img 
                                     src={block.content} 
                                     alt="Attachment" 
                                     draggable="false"
-                                    className="max-w-full z-0 h-auto object-contain transition-transform duration-700 group-hover/img:scale-[1.01] cursor-zoom-in pointer-events-none select-none" 
+                                    className="w-full h-auto object-contain transition-transform duration-700 group-hover/img:scale-[1.01] cursor-zoom-in select-none"
+                                    style={{ maxHeight: 'none' }}
                                     onClick={() => onImageClick(block.content)}
                                 />
+                                
+                                {/* Resize Handle */}
+                                <div 
+                                    className="absolute bottom-2 right-2 w-6 h-6 bg-sky-500/20 hover:bg-sky-500/40 border-2 border-sky-500/50 rounded-lg cursor-nwse-resize opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center"
+                                    onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        const startX = e.clientX;
+                                        const startWidth = (e.currentTarget.parentElement as HTMLElement).offsetWidth;
+                                        
+                                        const handleMouseMove = (moveEvent: MouseEvent) => {
+                                            const newWidth = startWidth + (moveEvent.clientX - startX);
+                                            if (newWidth >= 200 && newWidth <= 1200) {
+                                                updateBlock(block.id, { 
+                                                    metadata: { 
+                                                        ...block.metadata, 
+                                                        width: `${newWidth}px` 
+                                                    } 
+                                                });
+                                            }
+                                        };
+                                        
+                                        const handleMouseUp = () => {
+                                            document.removeEventListener('mousemove', handleMouseMove);
+                                            document.removeEventListener('mouseup', handleMouseUp);
+                                        };
+                                        
+                                        document.addEventListener('mousemove', handleMouseMove);
+                                        document.addEventListener('mouseup', handleMouseUp);
+                                    }}
+                                >
+                                    <div className="w-1 h-1 bg-sky-500 rounded-full" />
+                                </div>
+
                                 <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover/img:opacity-100 transition-all transform translate-y-2 group-hover/img:translate-y-0 flex items-center justify-between">
                                      <div className="flex items-center gap-3">
                                          <div className="p-2 bg-white/10 backdrop-blur-md rounded-lg border border-white/20">
@@ -472,6 +577,19 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAbove
                                          <p className="text-[10px] font-black uppercase tracking-widest text-white/70">Attached Image</p>
                                      </div>
                                      <div className="flex items-center gap-2">
+                                         <button 
+                                             onClick={() => updateBlock(block.id, { metadata: { ...block.metadata, width: '100%' } })} 
+                                             className="p-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-white transition-all shadow-lg active:scale-95 text-[9px] font-black uppercase tracking-wider"
+                                         >
+                                             Reset Size
+                                         </button>
+                                         <button 
+                                             onClick={() => onImageClick(block.content)}
+                                             className="p-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-white transition-all shadow-lg active:scale-95"
+                                             title="Expand Image"
+                                         >
+                                             <Maximize2 size={16} />
+                                         </button>
                                          <button onClick={() => fileInputRef.current?.click()} className="p-2.5 bg-sky-500 hover:bg-sky-400 rounded-xl text-black transition-all shadow-lg active:scale-95">
                                              <Edit3 size={16} />
                                          </button>
@@ -492,6 +610,12 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAbove
                                 </div>
                             </button>
                         )}
+                        <AutoResizeTextarea 
+                            value={block.metadata?.caption || ''} 
+                            onChange={(v: string) => updateBlock(block.id, { metadata: { ...block.metadata, caption: v } })} 
+                            className="text-[11px] font-bold text-center text-white/30 tracking-wide mt-2" 
+                            placeholder="Add a caption to this image..." 
+                        />
                     </div>
                 );
             case 'code':
@@ -518,17 +642,26 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAbove
 
     return (
         <Reorder.Item 
+            ref={blockRef}
             value={block} 
             id={block.id}
             dragListener={false}
             dragControls={dragControls}
             layout="position"
             whileDrag={{ zIndex: 100 }}
-            className={`group relative flex items-start gap-6 px-10 py-1.5 rounded-[2rem] hover:bg-white/[0.01] transition-colors duration-150 overflow-visible`}
+            transition={{ 
+                type: "spring", 
+                stiffness: 1000, 
+                damping: 60, 
+                mass: 0.2,
+                layout: { type: "spring", stiffness: 1000, damping: 60, mass: 0.1 }
+            }}
+            style={{ zIndex: isMenuOpen ? 1000 : 1 }}
+            className={`group relative flex items-start gap-6 px-10 py-2 rounded-[2rem] hover:bg-white/[0.01] transition-colors duration-150 will-change-transform overflow-visible`}
         >
             <div 
                 ref={menuButtonRef}
-                className={`${isMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 group-hover:opacity-100 -translate-y-2 group-hover:translate-y-0'} absolute -left-4 -top-6 flex flex-row items-center gap-1 transition-all duration-300 bg-[#0F0F0F] p-1 rounded-xl border border-white/5 shadow-2xl pointer-events-auto`}
+                className={`${isMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 group-hover:opacity-100 -translate-y-2 group-hover:translate-y-0'} absolute -left-4 -top-6 flex flex-row items-center gap-1 z-[100] transition-all duration-300 bg-[#0F0F0F] p-1 rounded-xl border border-white/5 shadow-2xl pointer-events-auto`}
             >
                 <button onClick={() => addBlockAbove(block.id, 'text', true)} className="p-1.5 text-white/40 hover:text-sky-400 hover:bg-sky-500/10 rounded-lg transition-all" title="Add block below">
                     <Plus size={14} />
@@ -544,17 +677,19 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAbove
                 {renderContent()}
             </div>
             
-            {/* Portal the menu to escape stacking context */}
+            {/* Portal the menu to escape stacking context - positions above or below based on viewport space */}
             {typeof window !== 'undefined' && isMenuOpen && createPortal(
                 <div 
-                    className="fixed w-64 bg-[#0A0A0A] border border-white/10 rounded-2xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.7)] z-[9999] p-2 overflow-hidden animate-in fade-in slide-in-from-left-2 duration-200"
+                    className={`fixed w-72 bg-[#0A0A0A]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)] z-[9999] p-2 overflow-hidden animate-in fade-in ${menuPosition.showAbove ? 'slide-in-from-bottom-2' : 'slide-in-from-top-2'} duration-200`}
                     style={{
-                        top: `${menuPosition.top}px`,
-                        left: `${menuPosition.left}px`
+                        top: menuPosition.showAbove ? 'auto' : `${menuPosition.top}px`,
+                        bottom: menuPosition.showAbove ? `${window.innerHeight - menuPosition.top + 8}px` : 'auto',
+                        left: `${menuPosition.left}px`,
+                        maxHeight: menuPosition.showAbove ? `${menuPosition.top - 20}px` : `${window.innerHeight - menuPosition.top - 20}px`
                     }}
                 >
                     <div className="px-3 py-2 mb-1 border-b border-white/5">
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 italic">Block Selection</span>
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30 italic">Transform Block</span>
                     </div>
                     <div className="max-h-[350px] overflow-y-auto scrollbar-hide py-1">
                         {(['h1', 'h2', 'h3', 'text', 'todo', 'callout', 'bullet', 'quote', 'image', 'code', 'divider'] as BlockType[]).map(t => (
@@ -697,6 +832,34 @@ export default function NotionNoteEditor({ noteId, onBack }: { noteId?: string, 
         }));
     }, []);
 
+    // Remove block and focus the previous one (for smooth backspace behavior like Notion)
+    // If id is null, just focus the block at focusIndex without removing anything
+    const removeBlockWithFocus = useCallback((id: string | null, focusIndex: number) => {
+        if (id === null) {
+            // Just navigate focus, don't remove anything
+            setData(prev => {
+                if (prev.blocks[focusIndex]) {
+                    setTimeout(() => {
+                        setFocusedBlockId(prev.blocks[focusIndex].id);
+                    }, 0);
+                }
+                return prev;
+            });
+            return;
+        }
+        
+        setData(prev => {
+            const newBlocks = prev.blocks.filter(b => b.id !== id);
+            // Set focus to the block at focusIndex
+            if (newBlocks[focusIndex]) {
+                setTimeout(() => {
+                    setFocusedBlockId(newBlocks[focusIndex].id);
+                }, 0);
+            }
+            return { ...prev, blocks: newBlocks };
+        });
+    }, []);
+
     const addBlockAt = useCallback((id: string, type: BlockType = 'text', after: boolean = true) => {
         const newId = Math.random().toString(36).substr(2, 9);
         setData(prev => {
@@ -706,6 +869,16 @@ export default function NotionNoteEditor({ noteId, onBack }: { noteId?: string, 
             newBlocks.splice(after ? index + 1 : index, 0, newBlock);
             return { ...prev, blocks: newBlocks };
         });
+        setFocusedBlockId(newId);
+    }, []);
+
+    // Add a new block at the end (for clicking on empty space)
+    const addBlockAtEnd = useCallback(() => {
+        const newId = Math.random().toString(36).substr(2, 9);
+        setData(prev => ({
+            ...prev,
+            blocks: [...prev.blocks, { id: newId, type: 'text' as BlockType, content: '' }]
+        }));
         setFocusedBlockId(newId);
     }, []);
 
@@ -799,8 +972,10 @@ export default function NotionNoteEditor({ noteId, onBack }: { noteId?: string, 
                                 <EditorBlock 
                                     key={block.id} 
                                     block={block} 
+                                    blockIndex={idx}
                                     updateBlock={updateBlock} 
                                     removeBlock={removeBlock}
+                                    onRemoveWithFocus={removeBlockWithFocus}
                                     addBlockAbove={addBlockAt}
                                     isLast={idx === data.blocks.length - 1}
                                     isFocused={focusedBlockId === block.id}
@@ -809,13 +984,20 @@ export default function NotionNoteEditor({ noteId, onBack }: { noteId?: string, 
                                 />
                             ))}
                         </Reorder.Group>
-                        <div className="mt-20 pt-20 border-t border-border text-center">
-                            <button 
-                                onClick={() => addBlockAt(data.blocks[data.blocks.length-1]?.id, 'text', true)}
-                                className="inline-flex items-center gap-3 px-8 py-4 bg-foreground/5 hover:bg-foreground/10 rounded-2xl text-[11px] font-black uppercase tracking-widest text-muted-foreground/40 hover:text-foreground transition-all"
-                            >
-                                <Plus size={18} /> Append New Content Block
-                            </button>
+                        
+                        {/* Notion-like click-to-add empty space at bottom */}
+                        <div 
+                            onClick={addBlockAtEnd}
+                            className="min-h-[300px] mt-4 cursor-text group relative"
+                        >
+                            <div className="absolute inset-0 flex items-start justify-start px-10 pt-8">
+                                <div className="flex items-center gap-3 text-white/10 group-hover:text-white/30 transition-colors duration-300">
+                                    <Plus size={16} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <span className="text-[13px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                                        Click to add a new block, or press Enter in any block
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}

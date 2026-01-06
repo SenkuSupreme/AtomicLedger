@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence, Reorder } from "framer-motion";
 
-const navGroups = [
+const DEFAULT_NAV_GROUPS = [
   {
     label: "Analytics",
     items: [
@@ -90,6 +90,14 @@ const navGroups = [
   },
 ];
 
+// Helper to get icon component by name
+const ICON_MAP: Record<string, any> = {
+  LayoutDashboard, Book, BookOpen, TrendingUp, Layers, BarChart3,
+  Newspaper, Microscope, Timer, Trophy, CheckSquare, Target,
+  Activity, Notebook, Calculator, Calendar, StickyNote, MessageCircle,
+  Eye, Clock, Zap
+};
+
 const Sidebar = React.memo(function Sidebar({
   isCollapsed,
   setIsCollapsed,
@@ -100,8 +108,73 @@ const Sidebar = React.memo(function Sidebar({
   const pathname = usePathname();
   const [expandedGroups, setExpandedGroups] = useState<string[]>(["Analytics", "Performance"]);
   const [hoveredItem, setHoveredItem] = useState<{ label: string; y: number } | null>(null);
+  const [groups, setGroups] = useState(DEFAULT_NAV_GROUPS);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  const [groups, setGroups] = useState(navGroups);
+  // Load sidebar state from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedExpandedGroups = localStorage.getItem('sidebar-expanded-groups');
+      const savedGroupOrder = localStorage.getItem('sidebar-group-order');
+      const savedItemOrder = localStorage.getItem('sidebar-item-order');
+      
+      if (savedExpandedGroups) {
+        setExpandedGroups(JSON.parse(savedExpandedGroups));
+      }
+      
+      if (savedGroupOrder) {
+        const groupOrder = JSON.parse(savedGroupOrder) as string[];
+        // Reorder groups based on saved order
+        setGroups(prev => {
+          const orderedGroups = groupOrder
+            .map(label => prev.find(g => g.label === label))
+            .filter(Boolean) as typeof DEFAULT_NAV_GROUPS;
+          // Add any groups that weren't in the saved order (new groups)
+          const remainingGroups = prev.filter(g => !groupOrder.includes(g.label));
+          return [...orderedGroups, ...remainingGroups];
+        });
+      }
+      
+      if (savedItemOrder) {
+        const itemOrder = JSON.parse(savedItemOrder) as Record<string, string[]>;
+        setGroups(prev => prev.map(group => {
+          const savedOrder = itemOrder[group.label];
+          if (savedOrder) {
+            const orderedItems = savedOrder
+              .map(href => group.items.find(item => item.href === href))
+              .filter(Boolean) as typeof group.items;
+            const remainingItems = group.items.filter(item => !savedOrder.includes(item.href));
+            return { ...group, items: [...orderedItems, ...remainingItems] };
+          }
+          return group;
+        }));
+      }
+    } catch (e) {
+      console.error('Error loading sidebar state:', e);
+    }
+    setIsInitialized(true);
+  }, []);
+
+  // Save expanded groups to localStorage
+  useEffect(() => {
+    if (isInitialized) {
+      localStorage.setItem('sidebar-expanded-groups', JSON.stringify(expandedGroups));
+    }
+  }, [expandedGroups, isInitialized]);
+
+  // Save group order to localStorage
+  useEffect(() => {
+    if (isInitialized) {
+      const groupOrder = groups.map(g => g.label);
+      localStorage.setItem('sidebar-group-order', JSON.stringify(groupOrder));
+      
+      const itemOrder: Record<string, string[]> = {};
+      groups.forEach(g => {
+        itemOrder[g.label] = g.items.map(item => item.href);
+      });
+      localStorage.setItem('sidebar-item-order', JSON.stringify(itemOrder));
+    }
+  }, [groups, isInitialized]);
 
   const toggleGroup = (label: string) => {
     setExpandedGroups(prev => 
