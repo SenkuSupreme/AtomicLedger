@@ -375,7 +375,7 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAt, i
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, showAbove: false });
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const textareaRef = useRef<HTMLElement | null>(null);
+    const textareaRef = useRef<any>(null);
     const menuButtonRef = useRef<HTMLDivElement>(null);
     const blockRef = useRef<HTMLLIElement>(null);
 
@@ -601,6 +601,23 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAt, i
                     // This is handled naturally by focus flow
                 }
             }
+        } else if (e.key === 'Tab') {
+            e.preventDefault();
+            if (block.type === 'code') {
+                const target = textareaRef.current as any;
+                if (target && typeof target.selectionStart === 'number') {
+                    const start = target.selectionStart;
+                    const end = target.selectionEnd;
+                    const val = block.content;
+                    const newVal = val.substring(0, start) + '    ' + val.substring(end);
+                    handleTextChange(newVal);
+                    setTimeout(() => {
+                        target.setSelectionRange(start + 4, start + 4);
+                    }, 0);
+                }
+            } else {
+                document.execCommand('insertText', false, '    ');
+            }
         }
     };
 
@@ -715,6 +732,7 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAt, i
                             </button>
                         </div>
                         <AutoResizeTextarea 
+                            ref={textareaRef}
                             value={block.content} 
                             onChange={handleTextChange} 
                             onKeyDown={handleKeyDown} 
@@ -874,24 +892,47 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAt, i
                                 </div>
                                 <span>Architecture Data Matrix</span>
                             </div>
-                            <div className="flex bg-white/5 border border-white/10 rounded-xl p-1 opacity-0 group-hover/table:opacity-100 transition-opacity">
+                            <div className="flex bg-white/5 border border-white/10 rounded-xl p-1 opacity-0 group-hover/table:opacity-100 transition-opacity gap-1">
                                 <button 
                                     onClick={() => {
                                         const newData = tableData.map((r: any) => [...r, '']);
                                         updateBlock(block.id, { metadata: { ...block.metadata, cols: cols + 1, data: newData } });
                                     }}
-                                    className="p-2 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-all text-[9px] font-black uppercase tracking-wider px-3"
+                                    className="p-2 hover:bg-white/10 rounded-lg text-sky-400 hover:text-sky-300 transition-all text-[9px] font-black uppercase tracking-wider px-3"
                                 >
-                                    + Column
+                                    + Col
                                 </button>
+                                <button 
+                                    disabled={cols <= 1}
+                                    onClick={() => {
+                                        if (cols <= 1) return;
+                                        const newData = tableData.map((r: any) => r.slice(0, -1));
+                                        updateBlock(block.id, { metadata: { ...block.metadata, cols: cols - 1, data: newData } });
+                                    }}
+                                    className="p-2 hover:bg-rose-500/10 rounded-lg text-rose-400/60 hover:text-rose-400 transition-all text-[9px] font-black uppercase tracking-wider px-3 disabled:opacity-20"
+                                >
+                                    - Col
+                                </button>
+                                <div className="w-[1px] h-4 bg-white/10 self-center mx-1" />
                                 <button 
                                     onClick={() => {
                                         const newData = [...tableData, Array(cols).fill('')];
                                         updateBlock(block.id, { metadata: { ...block.metadata, rows: rows + 1, data: newData } });
                                     }}
-                                    className="p-2 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-all text-[9px] font-black uppercase tracking-wider px-3"
+                                    className="p-2 hover:bg-white/10 rounded-lg text-sky-400 hover:text-sky-300 transition-all text-[9px] font-black uppercase tracking-wider px-3"
                                 >
                                     + Row
+                                </button>
+                                <button 
+                                    disabled={rows <= 1}
+                                    onClick={() => {
+                                        if (rows <= 1) return;
+                                        const newData = tableData.slice(0, -1);
+                                        updateBlock(block.id, { metadata: { ...block.metadata, rows: rows - 1, data: newData } });
+                                    }}
+                                    className="p-2 hover:bg-rose-500/10 rounded-lg text-rose-400/60 hover:text-rose-400 transition-all text-[9px] font-black uppercase tracking-wider px-3 disabled:opacity-20"
+                                >
+                                    - Row
                                 </button>
                             </div>
                          </div>
@@ -1155,8 +1196,20 @@ export default function NotionNoteEditor({ noteId, onBack }: { noteId?: string, 
 
             // Check for Ctrl+Z (Windows/Linux) or Cmd+Z (Mac)
             if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-                e.preventDefault();
-                undo();
+                // If focused on an editable element, let the browser handle text undo first
+                const target = e.target as HTMLElement;
+                const isEditable = target.isContentEditable || 
+                                 target.tagName === 'INPUT' || 
+                                 target.tagName === 'TEXTAREA';
+                
+                if (!isEditable) {
+                    e.preventDefault();
+                    undo();
+                } else if (!document.queryCommandEnabled('undo')) {
+                    // Fallback to our undo if browser has nothing to undo
+                    e.preventDefault();
+                    undo();
+                }
                 return;
             }
         };
