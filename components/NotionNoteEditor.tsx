@@ -48,19 +48,19 @@ import {
     Undo,
     Eraser,
     Pipette,
-    BarChart2,
     ArrowLeft,
     ArrowRight,
+    Terminal,
+    Copy,
+    BarChart2,
     Save,
     Activity,
-    Terminal,
     Command,
     Cpu,
     Workflow,
     Table as TableIcon,
     ChevronRight as ChevronRightIcon,
     Link2,
-    Copy,
     ExternalLink,
     X
 } from 'lucide-react';
@@ -287,6 +287,11 @@ const ContentBlock = React.forwardRef(({ html, tagName: Tag = 'div', className, 
             suppressContentEditableWarning
             onInput={handleInput}
             onKeyDown={onKeyDown}
+            onPaste={(e: React.ClipboardEvent) => {
+                e.preventDefault();
+                const text = e.clipboardData.getData('text/plain');
+                document.execCommand('insertText', false, text);
+            }}
             onFocus={() => {
                 if (props.onFocus) props.onFocus();
             }}
@@ -365,7 +370,7 @@ const AutoResizeTextarea = React.forwardRef<HTMLTextAreaElement, any>(({ value, 
 });
 AutoResizeTextarea.displayName = "AutoResizeTextarea";
 
-const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAbove, isLast, isFocused, onImageClick, onFocus, onRemoveWithFocus, blockIndex, allBlocks }: any) => {
+const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAt, isLast, isFocused, onImageClick, onFocus, onRemoveWithFocus, blockIndex, allBlocks }: any) => {
     const dragControls = useDragControls();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, showAbove: false });
@@ -489,40 +494,81 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAbove
         }
 
         if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
             const command = block.content.replace(/<[^>]*>/g, '').trim().toLowerCase();
+            
             if (SLASH_COMMANDS[command]) {
-                e.preventDefault();
                 updateBlock(block.id, { type: SLASH_COMMANDS[command], content: '' });
                 setIsMenuOpen(false);
                 return;
             }
-            if (block.type === 'bullet') {
-                e.preventDefault();
-                addBlockAbove(block.id, 'bullet', true);
-                return;
-            }
-            if (block.type === 'number') {
-                e.preventDefault();
-                addBlockAbove(block.id, 'number', true);
-                return;
-            }
-            if (block.type === 'todo') {
-                e.preventDefault();
-                addBlockAbove(block.id, 'todo', true);
-                return;
-            }
-            e.preventDefault();
-            addBlockAbove(block.id, 'text', true);
-            const selection = window.getSelection();
-            const range = selection?.getRangeAt(0);
-            const isAtStart = range?.startOffset === 0;
 
-            if (isAtStart && selection?.isCollapsed) {
-                e.preventDefault();
-                if (blockIndex > 0) {
-                    onRemoveWithFocus(block.content ? null : block.id, blockIndex - 1);
-                } else if (!block.content && block.type !== 'text') {
-                    updateBlock(block.id, { type: 'text' });
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0 && textareaRef.current) {
+                const range = selection.getRangeAt(0);
+                
+                // Get the content before and after the cursor
+                const preRange = range.cloneRange();
+                preRange.selectNodeContents(textareaRef.current);
+                preRange.setEnd(range.startContainer, range.startOffset);
+                
+                const postRange = range.cloneRange();
+                postRange.selectNodeContents(textareaRef.current);
+                postRange.setStart(range.startContainer, range.startOffset);
+                
+                const leftHtml = document.createElement('div');
+                leftHtml.appendChild(preRange.cloneContents());
+                
+                const rightHtml = document.createElement('div');
+                rightHtml.appendChild(postRange.cloneContents());
+
+                // Update current block state and DOM
+                const leftContent = leftHtml.innerHTML;
+                if (textareaRef.current) {
+                    textareaRef.current.innerHTML = leftContent;
+                }
+                updateBlock(block.id, { content: leftContent });
+                
+                // Add new block with the remaining content
+                const newType = ['bullet', 'number', 'todo'].includes(block.type) ? block.type : 'text';
+                addBlockAt(block.id, newType, true, rightHtml.innerHTML);
+            } else {
+                const newType = ['bullet', 'number', 'todo'].includes(block.type) ? block.type : 'text';
+                addBlockAt(block.id, newType, true, '');
+            }
+        } else if (e.key === 'Backspace') {
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0 && textareaRef.current) {
+                const range = selection.getRangeAt(0);
+                
+                // Check if we are at the very beginning of the block
+                let isAtStart = range.startOffset === 0;
+                if (isAtStart) {
+                    let node = range.startContainer;
+                    while (node && node !== textareaRef.current) {
+                        if (node.previousSibling) {
+                            isAtStart = false;
+                            break;
+                        }
+                        node = node.parentNode!;
+                    }
+                }
+
+                if (isAtStart && selection.isCollapsed) {
+                    e.preventDefault();
+                    if (blockIndex > 0) {
+                        const prevBlock = allBlocks[blockIndex - 1];
+                        const textLike = ['text', 'h1', 'h2', 'h3', 'bullet', 'number', 'todo', 'quote', 'callout'];
+                        
+                        if (textLike.includes(block.type) && textLike.includes(prevBlock.type)) {
+                            updateBlock(prevBlock.id, { content: prevBlock.content + block.content });
+                            onRemoveWithFocus(block.id, blockIndex - 1);
+                        } else if (!block.content.replace(/<[^>]*>/g, '').trim()) {
+                            onRemoveWithFocus(block.id, blockIndex - 1);
+                        }
+                    } else if (block.type !== 'text') {
+                        updateBlock(block.id, { type: 'text' });
+                    }
                 }
             }
         } else if (e.key === 'ArrowUp') {
@@ -640,6 +686,13 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAbove
                     <div className="pl-10 border-l-[6px] border-sky-500/40 italic py-6 mb-4 bg-sky-500/[0.03] backdrop-blur-md rounded-r-[2rem] relative overflow-hidden group/quote">
                         <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-sky-500 shadow-[0_0_15px_rgba(14,165,233,0.5)] opacity-50 group-hover/quote:opacity-100 transition-opacity" />
                         <ContentBlock ref={textareaRef} html={block.content} onChange={handleTextChange} onKeyDown={handleKeyDown} onFocus={() => onFocus(block.id)} className="text-xl font-medium text-white/90 leading-relaxed drop-shadow-sm" placeholder="Institutional wisdom..." />
+                    </div>
+                );
+            case 'bullet':
+                return (
+                    <div className="flex items-start gap-3 w-full group/bullet">
+                        <div className="mt-2.5 w-1.5 h-1.5 rounded-full bg-sky-500 shrink-0 shadow-[0_0_8px_rgba(14,165,233,0.5)] group-hover/bullet:scale-125 transition-transform" />
+                        <ContentBlock ref={textareaRef} html={block.content} onChange={handleTextChange} onKeyDown={handleKeyDown} onFocus={() => onFocus(block.id)} className="text-lg font-medium leading-relaxed text-white/90" placeholder="Bullet point..." />
                     </div>
                 );
             case 'code':
@@ -895,7 +948,7 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAbove
         >
             <div className="absolute left-[-80px] top-1/2 -translate-y-1/2 flex items-center gap-2 opacity-100 lg:opacity-0 lg:group-hover/block:opacity-100 transition-all duration-200 z-[100]">
                 <button 
-                    onClick={() => addBlockAbove(block.id, 'text', false)}
+                    onClick={() => addBlockAt(block.id, 'text', false)}
                     className="p-1.5 hover:bg-white/20 rounded-md text-white/40 hover:text-white transition-all shadow-sm"
                 >
                     <Plus size={18} strokeWidth={2.5} />
@@ -989,6 +1042,31 @@ export default function NotionNoteEditor({ noteId, onBack }: { noteId?: string, 
     const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
     const [showTemplatePicker, setShowTemplatePicker] = useState(!noteId);
 
+    // Undo system
+    const [history, setHistory] = useState<Block[][]>([]);
+
+    const pushToHistory = useCallback(() => {
+        setData(prev => {
+            setHistory(h => {
+                const newHistory = [...h, JSON.parse(JSON.stringify(prev.blocks))];
+                return newHistory.slice(-50); // Keep last 50 states
+            });
+            return prev;
+        });
+    }, []);
+
+    const undo = useCallback(() => {
+        if (history.length > 0) {
+            const prevState = history[history.length - 1];
+            setHistory(prev => prev.slice(0, -1));
+            setData(prev => ({ ...prev, blocks: prevState }));
+            toast('Action Reversed', { icon: <ArrowLeft size={14} /> });
+        } else {
+            // Native browse undo as fallback
+            document.execCommand('undo', false);
+        }
+    }, [history]);
+
     useEffect(() => {
         if (noteId) {
             fetch(`/api/notes/${noteId}`)
@@ -1077,14 +1155,15 @@ export default function NotionNoteEditor({ noteId, onBack }: { noteId?: string, 
 
             // Check for Ctrl+Z (Windows/Linux) or Cmd+Z (Mac)
             if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-                // Let the browser handle undo for contentEditable elements
+                e.preventDefault();
+                undo();
                 return;
             }
         };
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [handleSave]);
+    }, [handleSave, undo]);
 
     // Auto-save logic
     useEffect(() => {
@@ -1099,9 +1178,15 @@ export default function NotionNoteEditor({ noteId, onBack }: { noteId?: string, 
 
     const updateBlock = useCallback((id: string, updates: Partial<Block>) => {
         setData(prev => {
-            const newBlocks = prev.blocks.map(b => b.id === id ? { ...b, ...updates } : b);
+            const blockIndex = prev.blocks.findIndex(b => b.id === id);
+            if (blockIndex === -1) return prev;
+            
+            const newBlocks = [...prev.blocks];
+            const oldBlock = newBlocks[blockIndex];
+            newBlocks[blockIndex] = { ...oldBlock, ...updates };
+
             let newTitle = prev.title;
-            if (prev.blocks[0]?.id === id && updates.content !== undefined) {
+            if (blockIndex === 0 && updates.content !== undefined) {
                 newTitle = updates.content.replace(/<[^>]*>/g, '') || "NEW NOTE";
             }
             return {
@@ -1113,17 +1198,15 @@ export default function NotionNoteEditor({ noteId, onBack }: { noteId?: string, 
     }, []);
 
     const removeBlock = useCallback((id: string) => {
+        pushToHistory();
         setData(prev => ({
             ...prev,
             blocks: prev.blocks.filter(b => b.id !== id)
         }));
-    }, []);
+    }, [pushToHistory]);
 
-    // Remove block and focus the previous one (for smooth backspace behavior like Notion)
-    // If id is null, just focus the block at focusIndex without removing anything
     const removeBlockWithFocus = useCallback((id: string | null, focusIndex: number) => {
         if (id === null) {
-            // Just navigate focus, don't remove anything
             setData(prev => {
                 if (prev.blocks[focusIndex]) {
                     setTimeout(() => {
@@ -1135,9 +1218,9 @@ export default function NotionNoteEditor({ noteId, onBack }: { noteId?: string, 
             return;
         }
         
+        pushToHistory();
         setData(prev => {
             const newBlocks = prev.blocks.filter(b => b.id !== id);
-            // Set focus to the block at focusIndex
             if (newBlocks[focusIndex]) {
                 setTimeout(() => {
                     setFocusedBlockId(newBlocks[focusIndex].id);
@@ -1145,19 +1228,20 @@ export default function NotionNoteEditor({ noteId, onBack }: { noteId?: string, 
             }
             return { ...prev, blocks: newBlocks };
         });
-    }, []);
+    }, [pushToHistory]);
 
-    const addBlockAt = useCallback((id: string, type: BlockType = 'text', after: boolean = true) => {
+    const addBlockAt = useCallback((id: string, type: BlockType = 'text', after: boolean = true, initialContent: string = '') => {
+        pushToHistory();
         const newId = Math.random().toString(36).substr(2, 9);
         setData(prev => {
             const index = prev.blocks.findIndex(b => b.id === id);
-            const newBlock: Block = { id: newId, type, content: '' };
+            const newBlock: Block = { id: newId, type, content: initialContent };
             const newBlocks = [...prev.blocks];
             newBlocks.splice(after ? index + 1 : index, 0, newBlock);
             return { ...prev, blocks: newBlocks };
         });
-        setFocusedBlockId(newId);
-    }, []);
+        setTimeout(() => setFocusedBlockId(newId), 0);
+    }, [pushToHistory]);
 
     // Add a new block at the end (for clicking on empty space)
     const addBlockAtEnd = useCallback(() => {
@@ -1260,7 +1344,7 @@ export default function NotionNoteEditor({ noteId, onBack }: { noteId?: string, 
                             onReorder={(newBlocks) => setData(prev => ({ ...prev, blocks: newBlocks }))}
                             className="space-y-0"
                         >
-                            {data.blocks.map((block, idx) => (
+                             {data.blocks.map((block, idx) => (
                                 <EditorBlock 
                                     key={block.id} 
                                     block={block} 
@@ -1268,7 +1352,7 @@ export default function NotionNoteEditor({ noteId, onBack }: { noteId?: string, 
                                     updateBlock={updateBlock} 
                                     removeBlock={removeBlock}
                                     onRemoveWithFocus={removeBlockWithFocus}
-                                    addBlockAbove={addBlockAt}
+                                    addBlockAt={addBlockAt}
                                     isLast={idx === data.blocks.length - 1}
                                     isFocused={focusedBlockId === block.id}
                                     onFocus={setFocusedBlockId}

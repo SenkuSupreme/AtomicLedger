@@ -325,6 +325,11 @@ const ContentBlock = React.forwardRef(({ html, tagName: Tag = 'div', className, 
             suppressContentEditableWarning
             onInput={handleInput}
             onKeyDown={handleKeyDown}
+            onPaste={(e: React.ClipboardEvent) => {
+                e.preventDefault();
+                const text = e.clipboardData.getData('text/plain');
+                document.execCommand('insertText', false, text);
+            }}
             onFocus={() => {
                 if (props.onFocus) props.onFocus();
             }}
@@ -727,41 +732,78 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, isLast, isFoc
         }
 
         if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
             const command = block.content.replace(/<[^>]*>/g, '').trim().toLowerCase();
+            
             if (SLASH_COMMANDS[command]) {
-                e.preventDefault();
                 updateBlock(block.id, { type: SLASH_COMMANDS[command], content: '' });
                 setIsMenuOpen(false);
                 return;
             }
-            if (block.type === 'bullet') {
-                e.preventDefault();
-                addBlockAt(block.id, 'bullet', true);
-                return;
+
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0 && textareaRef.current) {
+                const range = selection.getRangeAt(0);
+                
+                const preRange = range.cloneRange();
+                preRange.selectNodeContents(textareaRef.current);
+                preRange.setEnd(range.startContainer, range.startOffset);
+                
+                const postRange = range.cloneRange();
+                postRange.selectNodeContents(textareaRef.current);
+                postRange.setStart(range.startContainer, range.startOffset);
+                
+                const leftHtml = document.createElement('div');
+                leftHtml.appendChild(preRange.cloneContents());
+                
+                const rightHtml = document.createElement('div');
+                rightHtml.appendChild(postRange.cloneContents());
+
+                // Update current block state and DOM
+                const leftContent = leftHtml.innerHTML;
+                if (textareaRef.current) {
+                    textareaRef.current.innerHTML = leftContent;
+                }
+                updateBlock(block.id, { content: leftContent });
+                
+                const newType = ['bullet', 'number', 'todo'].includes(block.type) ? block.type : 'text';
+                addBlockAt(block.id, newType, true, rightHtml.innerHTML);
+            } else {
+                const newType = ['bullet', 'number', 'todo'].includes(block.type) ? block.type : 'text';
+                addBlockAt(block.id, newType, true, '');
             }
-            if (block.type === 'number') {
-                e.preventDefault();
-                addBlockAt(block.id, 'number', true);
-                return;
-            }
-            if (block.type === 'todo') {
-                e.preventDefault();
-                addBlockAt(block.id, 'todo', true);
-                return;
-            }
-            e.preventDefault();
-            addBlockAt(block.id, 'text', true);
         } else if (e.key === 'Backspace') {
             const selection = window.getSelection();
-            const range = selection?.getRangeAt(0);
-            const isAtStart = range?.startOffset === 0;
+            if (selection && selection.rangeCount > 0 && textareaRef.current) {
+                const range = selection.getRangeAt(0);
+                
+                let isAtStart = range.startOffset === 0;
+                if (isAtStart) {
+                    let node = range.startContainer;
+                    while (node && node !== textareaRef.current) {
+                        if (node.previousSibling) {
+                            isAtStart = false;
+                            break;
+                        }
+                        node = node.parentNode!;
+                    }
+                }
 
-            if (isAtStart && selection?.isCollapsed) {
-                e.preventDefault();
-                if (blockIndex > 0) {
-                    onRemoveWithFocus(block.content ? null : block.id, blockIndex - 1);
-                } else if (!block.content && block.type !== 'text') {
-                    updateBlock(block.id, { type: 'text' });
+                if (isAtStart && selection.isCollapsed) {
+                    e.preventDefault();
+                    if (blockIndex > 0) {
+                        const prevBlock = allBlocks[blockIndex - 1];
+                        const textLike = ['text', 'h1', 'h2', 'h3', 'bullet', 'number', 'todo', 'quote', 'callout'];
+                        
+                        if (textLike.includes(block.type) && textLike.includes(prevBlock.type)) {
+                            updateBlock(prevBlock.id, { content: prevBlock.content + block.content });
+                            onRemoveWithFocus(block.id, blockIndex - 1);
+                        } else if (!block.content.replace(/<[^>]*>/g, '').trim()) {
+                            onRemoveWithFocus(block.id, blockIndex - 1);
+                        }
+                    } else if (block.type !== 'text') {
+                        updateBlock(block.id, { type: 'text' });
+                    }
                 }
             }
         } else if (e.key === ' ') {
@@ -1227,6 +1269,30 @@ export default function NotionStrategyEditor({ strategyId, onBack, initialIsTemp
     const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
     const [showTemplatePicker, setShowTemplatePicker] = useState(!strategyId);
 
+    // Undo system
+    const [history, setHistory] = useState<Block[][]>([]);
+
+    const pushToHistory = useCallback(() => {
+        setData(prev => {
+            setHistory(h => {
+                const newHistory = [...h, JSON.parse(JSON.stringify(prev.blocks))];
+                return newHistory.slice(-50); 
+            });
+            return prev;
+        });
+    }, []);
+
+    const undo = useCallback(() => {
+        if (history.length > 0) {
+            const prevState = history[history.length - 1];
+            setHistory(prev => prev.slice(0, -1));
+            setData(prev => ({ ...prev, blocks: prevState }));
+            toast('Action Reversed', { icon: <ArrowLeft size={14} /> });
+        } else {
+            document.execCommand('undo', false);
+        }
+    }, [history]);
+
     useEffect(() => {
         if (strategyId) {
             fetch(`/api/strategies?id=${strategyId}`)
@@ -1302,13 +1368,15 @@ export default function NotionStrategyEditor({ strategyId, onBack, initialIsTemp
             }
 
             if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                undo();
                 return;
             }
         };
 
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [handleSave]);
+    }, [handleSave, undo]);
 
     // Auto-save logic
     useEffect(() => {
@@ -1409,11 +1477,12 @@ export default function NotionStrategyEditor({ strategyId, onBack, initialIsTemp
     }, []);
 
     const removeBlock = useCallback((id: string) => {
+        pushToHistory();
         setData(prev => ({
             ...prev,
             blocks: prev.blocks.filter(b => b.id !== id)
         }));
-    }, []);
+    }, [pushToHistory]);
 
     const removeBlockWithFocus = useCallback((id: string | null, focusIndex: number) => {
         if (id === null) {
@@ -1428,6 +1497,7 @@ export default function NotionStrategyEditor({ strategyId, onBack, initialIsTemp
             return;
         }
 
+        pushToHistory();
         setData(prev => {
             const index = prev.blocks.findIndex(b => b.id === id);
             const newBlocks = prev.blocks.filter(b => b.id !== id);
@@ -1449,7 +1519,8 @@ export default function NotionStrategyEditor({ strategyId, onBack, initialIsTemp
         });
     }, []);
 
-    const addBlockAt = useCallback((idOrIndex: string | number, type: BlockType = 'text', after: boolean = true) => {
+    const addBlockAt = useCallback((idOrIndex: string | number, type: BlockType = 'text', after: boolean = true, initialContent: string = '') => {
+        pushToHistory();
         const newId = Math.random().toString(36).substr(2, 9);
         setData(prev => {
             let index: number;
@@ -1463,14 +1534,14 @@ export default function NotionStrategyEditor({ strategyId, onBack, initialIsTemp
             const newBlock: Block = {
                 id: newId,
                 type,
-                content: ''
+                content: initialContent
             };
             const newBlocks = [...prev.blocks];
             newBlocks.splice(index, 0, newBlock);
             return { ...prev, blocks: newBlocks };
         });
         setTimeout(() => setFocusedBlockId(newId), 0);
-    }, []);
+    }, [pushToHistory]);
 
     const selectTemplate = (template: Block[]) => {
         const name = template[0]?.type === 'h1' ? template[0].content.replace(/<[^>]*>/g, '').toUpperCase() : data.name;
