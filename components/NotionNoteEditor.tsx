@@ -268,11 +268,61 @@ const ContentBlock = React.forwardRef(({ html, tagName: Tag = 'div', className, 
         }
     }, [html]);
 
+    const [prediction, setPrediction] = useState('');
+    const predictionTimeout = useRef<any>(null);
+
+    useEffect(() => {
+        return () => {
+            if (predictionTimeout.current) clearTimeout(predictionTimeout.current);
+        };
+    }, []);
+
+    const fetchPrediction = useCallback(async (text: string) => {
+        if (text.trim().length < 5) return;
+        try {
+            const res = await fetch('/api/ai/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ context: text })
+            });
+            const data = await res.json();
+            if (data.completion && document.activeElement === elementRef.current) {
+                setPrediction(data.completion);
+            }
+        } catch (err) {
+            console.error('Prediction error:', err);
+        }
+    }, []);
+
     const handleInput = (e: React.FormEvent<HTMLElement>) => {
         const newHtml = e.currentTarget.innerHTML;
+        const text = e.currentTarget.textContent || '';
+        
         if (newHtml !== html) {
             onChange(newHtml);
         }
+
+        // Clear existing prediction
+        setPrediction('');
+        if (predictionTimeout.current) clearTimeout(predictionTimeout.current);
+
+        // Fetch new prediction after pause
+        predictionTimeout.current = setTimeout(() => {
+            fetchPrediction(text);
+        }, 800);
+    };
+
+    const handleKeyDownInternal = (e: React.KeyboardEvent<HTMLElement>) => {
+        if (e.key === 'Tab' && prediction) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Insert the prediction
+            document.execCommand('insertText', false, prediction);
+            setPrediction('');
+            return;
+        }
+        if (onKeyDown) onKeyDown(e);
     };
 
     return (
@@ -282,11 +332,12 @@ const ContentBlock = React.forwardRef(({ html, tagName: Tag = 'div', className, 
                 if (typeof ref === 'function') ref(node);
                 else if (ref) (ref as React.MutableRefObject<HTMLElement | null>).current = node;
             }}
-            className={`outline-none min-h-[1.5em] focus:empty:before:content-[attr(data-placeholder)] empty:before:text-white/20 px-1 transition-all duration-200 ${className} [&>b]:font-black [&>i]:italic [&>u]:underline [&>mark]:bg-amber-500/20 [&>mark]:text-amber-500 [&>mark]:px-1 [&>mark]:rounded-md`}
+            className={`outline-none min-h-[1.5em] focus:empty:before:content-[attr(data-placeholder)] empty:before:text-white/20 px-1 transition-all duration-200 ${className} [&>b]:font-black [&>i]:italic [&>u]:underline [&>mark]:bg-amber-500/20 [&>mark]:text-amber-500 [&>mark]:px-1 [&>mark]:rounded-md relative after:content-[attr(data-prediction)] after:text-white/20 after:pointer-events-none after:absolute after:pl-1`}
             contentEditable
             suppressContentEditableWarning
             onInput={handleInput}
-            onKeyDown={onKeyDown}
+            onKeyDown={handleKeyDownInternal}
+            data-prediction={prediction}
             onPaste={(e: React.ClipboardEvent) => {
                 e.preventDefault();
                 const text = e.clipboardData.getData('text/plain');

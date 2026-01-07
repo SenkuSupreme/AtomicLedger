@@ -71,6 +71,13 @@ export const PROMPTS = {
     Each item must be a clear, actionable rule (e.g., "Check for HTF displacement", "Verify 15m MSS").
     Return ONLY a JSON array of strings: ["Item 1", "Item 2", ...].
     Aim for 5-10 most critical items.
+  `,
+  PREDICT_CONTENT: (context: string) => `
+    You are an AI writing assistant for a high-performance trading platform.
+    Based on the following text, predict the next few words or the rest of the sentence to complete it.
+    Keep the completion short (max 5-10 words).
+    IMPORTANT: Return ONLY the completion text itself. Do not repeat the context. Do not add quotes.
+    Context: "${context}"
   `
 };
 
