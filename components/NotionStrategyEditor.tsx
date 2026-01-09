@@ -174,9 +174,15 @@ const FloatingToolbar = () => {
 
             // Calculate position relative to viewport, handling scroll is automatic with getBoundingClientRect
             // We adding a slight offset to center it above
+            const toolbarHeight = 60;
+            const topPos = rect.top - toolbarHeight;
+            
+            // If there's no space above, show it below the selection
+            const finalTop = topPos < 10 ? rect.bottom + 10 : topPos;
+
             setPosition({
-                top: rect.top - 60, // 60px above selection
-                left: rect.left + (rect.width / 2)
+                top: finalTop,
+                left: Math.max(150, Math.min(rect.left + (rect.width / 2), window.innerWidth - 150))
             });
             setIsVisible(true);
         };
@@ -333,6 +339,19 @@ const ContentBlock = React.forwardRef(({ html, tagName: Tag = 'div', className, 
         
         if (newHtml !== html) {
             onChange(newHtml);
+        }
+
+        // Ensure the typing area stays visible and centered if it's near the bottom
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            const viewportHeight = window.innerHeight;
+            
+            // If the cursor is below 70% of the screen, scroll it to center
+            if (rect.bottom > viewportHeight * 0.7) {
+                e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
 
         // Clear existing prediction
@@ -673,17 +692,18 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, isLast, isFoc
     useEffect(() => {
         if (isMenuOpen && blockRef.current) {
             const rect = blockRef.current.getBoundingClientRect();
-            const menuHeight = 350; // Expected max menu height
+            const minMenuHeight = 250; 
             const viewportHeight = window.innerHeight;
-            const spaceBelow = viewportHeight - rect.bottom;
+            const spaceBelow = viewportHeight - rect.bottom - 20;
+            const spaceAbove = rect.top - 20;
             
             // Determine if menu should show above or below
-            const showAbove = spaceBelow < menuHeight;
+            const showAbove = spaceBelow < minMenuHeight && spaceAbove > spaceBelow;
             
             setMenuPosition({
                 top: rect.top,
                 bottom: rect.bottom,
-                left: rect.left,
+                left: Math.max(20, Math.min(rect.left, window.innerWidth - 300)),
                 showAbove
             });
         }
@@ -1322,10 +1342,11 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, isLast, isFoc
                     style={{ 
                         position: 'fixed',
                         top: menuPosition.showAbove ? `${menuPosition.top - 8}px` : `${menuPosition.bottom + 8}px`,
-                        left: `${Math.min(menuPosition.left, window.innerWidth - 300)}px`,
+                        left: `${menuPosition.left}px`,
                         transform: menuPosition.showAbove ? 'translateY(-100%)' : 'none',
                         zIndex: 10000,
-                        cursor: 'move'
+                        cursor: 'move',
+                        maxHeight: menuPosition.showAbove ? `${menuPosition.top - 40}px` : `${window.innerHeight - menuPosition.bottom - 40}px`,
                     }}
                     className="w-72 bg-zinc-900/95 backdrop-blur-3xl border border-white/10 rounded-3xl shadow-[0_30px_60px_-12px_rgba(0,0,0,0.8)] overflow-hidden animate-in fade-in duration-200"
                 >

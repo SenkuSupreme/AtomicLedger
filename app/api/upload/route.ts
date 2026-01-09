@@ -16,6 +16,12 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Check for required environment variables
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      console.error('Missing Cloudinary environment variables');
+      return NextResponse.json({ error: 'Storage configuration missing' }, { status: 500 });
+    }
+
     const formData = await req.formData();
     const file = formData.get('file') as File;
 
@@ -34,8 +40,12 @@ export async function POST(req: NextRequest) {
           folder: 'apex-ledger-notes',
         },
         (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
+          if (error) {
+            console.error('Cloudinary upload stream error:', error);
+            reject(error);
+          } else {
+            resolve(result);
+          }
         }
       );
       uploadStream.end(buffer);
@@ -47,8 +57,12 @@ export async function POST(req: NextRequest) {
       url: uploadResult.secure_url,
       publicId: uploadResult.public_id,
     });
-  } catch (error) {
-    console.error('Upload error:', error);
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Detailed Upload error:', error);
+    return NextResponse.json({ 
+      error: 'Upload failed', 
+      message: error.message || 'Unknown error',
+      details: process.env.NODE_ENV === 'development' ? error : undefined
+    }, { status: 500 });
   }
 }
