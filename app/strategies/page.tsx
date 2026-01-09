@@ -245,9 +245,12 @@ export default function StrategiesPage() {
 
                       <div className="space-y-2">
                         {strategy.blocks && strategy.blocks.length > 0 ? (
-                          strategy.blocks.slice(0, 2).map((b: any, i: number) => (
+                          strategy.blocks
+                            .filter((b: any) => b.type === 'text' || b.type === 'callout' || b.type === 'bullet' || b.type === 'number')
+                            .slice(0, 2)
+                            .map((b: any, i: number) => (
                             <p key={i} className="text-[11px] text-muted-foreground/60 line-clamp-2 font-medium italic group-hover:text-foreground transition-colors">
-                              "{b.content || "..."}"
+                              "{b.content.replace(/<[^>]*>/g, '') || "..."}"
                             </p>
                           ))
                         ) : (

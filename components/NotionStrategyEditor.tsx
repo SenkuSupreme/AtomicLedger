@@ -698,7 +698,8 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, isLast, isFoc
             const spaceAbove = rect.top - 20;
             
             // Determine if menu should show above or below
-            const showAbove = spaceBelow < minMenuHeight && spaceAbove > spaceBelow;
+            // If space below is tight (less than 320px), show above, provided there is space.
+            const showAbove = spaceBelow < 320 && spaceAbove > spaceBelow;
             
             setMenuPosition({
                 top: rect.top,
@@ -1114,6 +1115,15 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, isLast, isFoc
                                         >
                                             Reset Grid
                                         </button>
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                removeBlock(block.id);
+                                            }}
+                                            className="px-6 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 backdrop-blur-md rounded-xl text-rose-400 hover:text-white transition-all text-[10px] font-black uppercase tracking-[0.2em] border border-rose-500/20"
+                                        >
+                                            Delete
+                                        </button>
                                     </div>
                                     <div 
                                         onClick={(e) => {
@@ -1421,6 +1431,12 @@ export default function NotionStrategyEditor({ strategyId, onBack, initialIsTemp
     const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
     const [showTemplatePicker, setShowTemplatePicker] = useState(!strategyId);
 
+    // Store latest data in ref for autosave
+    const dataRef = useRef(data);
+    useEffect(() => {
+        dataRef.current = data;
+    }, [data]);
+
     // Undo system
     const [history, setHistory] = useState<Block[][]>([]);
 
@@ -1470,10 +1486,12 @@ export default function NotionStrategyEditor({ strategyId, onBack, initialIsTemp
         }
         
         try {
+            // Use ref to get latest data
+            const currentData = dataRef.current;
             const res = await fetch('/api/strategies', {
-                method: data._id ? 'PUT' : 'POST',
+                method: currentData._id ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify(currentData)
             });
             
             if (!res.ok) {
@@ -1482,11 +1500,14 @@ export default function NotionStrategyEditor({ strategyId, onBack, initialIsTemp
             }
             
             const updated = await res.json();
+            
+            // Critical: Only update ID/timestamp, DO NOT revert blocks if we are ahead
             setData(prev => ({
                 ...updated,
-                blocks: updated.blocks || prev.blocks || [],
-                canvasElements: updated.canvasElements || prev.canvasElements || []
+                blocks: updated.blocks || prev.blocks, // Prefer server blocks but fallback to local if safe
+                isTemplate: prev.isTemplate // Maintain local template state
             }));
+            
             setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
             
             if (!silent) {

@@ -475,7 +475,9 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAt, i
             const spaceAbove = rect.top - 20;
             
             // Determine if menu should show above or below
-            const showAbove = spaceBelow < minMenuHeight && spaceAbove > spaceBelow;
+            // If space below is tight (less than 320px), show above.
+            // But only if there is actually more space above than below (scrolled down).
+            const showAbove = spaceBelow < 320 && spaceAbove > spaceBelow;
             
             setMenuPosition({
                 top: rect.top,
@@ -931,6 +933,15 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAt, i
                                         >
                                             Reset Grid
                                         </button>
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                removeBlock(block.id);
+                                            }}
+                                            className="px-6 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 backdrop-blur-md rounded-xl text-rose-400 hover:text-white transition-all text-[10px] font-black uppercase tracking-[0.2em] border border-rose-500/20"
+                                        >
+                                            Delete
+                                        </button>
                                     </div>
                                     <div 
                                         onClick={(e) => {
@@ -1205,6 +1216,12 @@ export default function NotionNoteEditor({ noteId, onBack }: { noteId?: string, 
     const [zoomScale, setZoomScale] = useState(1);
     const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
     const [showTemplatePicker, setShowTemplatePicker] = useState(!noteId);
+    
+    // Store latest data in ref for autosave
+    const dataRef = useRef(data);
+    useEffect(() => {
+        dataRef.current = data;
+    }, [data]);
 
     // Undo system
     const [history, setHistory] = useState<Block[][]>([]);
@@ -1268,11 +1285,13 @@ export default function NotionNoteEditor({ noteId, onBack }: { noteId?: string, 
         }
         
         try {
-            const url = data._id ? `/api/notes/${data._id}` : '/api/notes';
+            // Use ref to get latest data to avoid stale closures
+            const currentData = dataRef.current;
+            const url = currentData._id ? `/api/notes/${currentData._id}` : '/api/notes';
             const res = await fetch(url, {
-                method: data._id ? 'PUT' : 'POST',
+                method: currentData._id ? 'PUT' : 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify(currentData)
             });
             
             if (!res.ok) throw new Error(`Failed to save note: ${res.status}`);
