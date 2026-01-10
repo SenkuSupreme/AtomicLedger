@@ -39,6 +39,7 @@ const DEFAULT_NAV_GROUPS = [
       { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
       { href: "/journal", icon: Book, label: "Journal" },
       { href: "/calendar", icon: Calendar, label: "Calendar" },
+      { href: "/analytics/insights", icon: Sparkles, label: "Insights" },
     ],
   },
   {
