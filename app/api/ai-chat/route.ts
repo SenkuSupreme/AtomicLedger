@@ -58,12 +58,37 @@ export async function POST(req: Request) {
     await dbConnect();
 
     // 1. Fetch Context Data
-    // We limit fields to reduce token usage
-    const strategies = await Strategy.find({ userId: (session.user as any).id })
-      .select('name coreInfo setup execution risk blocks')
+    // Extract keywords for simple relevance search
+    const searchTerms = latestMessage.split(' ')
+      .filter((word: string) => word.length > 3 && !['what', 'when', 'where', 'which', 'who', 'show', 'tell', 'about'].includes(word.toLowerCase()))
+      .map((word: string) => word.replace(/[^a-zA-Z0-9]/g, ''));
+    
+    const searchRegex = searchTerms.length > 0 ? new RegExp(searchTerms.join('|'), 'i') : null;
+
+    // -- Strategies --
+    const relevantStrategies = searchRegex ? await Strategy.find({
+      userId: (session.user as any).id,
+      $or: [
+        { name: { $regex: searchRegex } },
+        { 'setup.setupName': { $regex: searchRegex } },
+        { 'blocks.content': { $regex: searchRegex } } // Detailed visual content
+      ]
+    })
+    .limit(3)
+    .select('name coreInfo setup execution risk blocks additionals')
+    .lean() : [];
+
+    const recentStrategies = await Strategy.find({ userId: (session.user as any).id })
+      .sort({ updatedAt: -1 })
       .limit(5)
+      .select('name coreInfo setup execution risk blocks additionals')
       .lean();
 
+    const strategiesMap = new Map();
+    [...relevantStrategies, ...recentStrategies].forEach((s: any) => strategiesMap.set(s._id.toString(), s));
+    const strategies = Array.from(strategiesMap.values());
+
+    // -- Trades --
     const trades = await Trade.find({ userId: (session.user as any).id })
       .sort({ timestampEntry: -1 })
       .limit(10)
@@ -71,11 +96,31 @@ export async function POST(req: Request) {
       .populate('strategyId', 'name')
       .lean();
 
-    const journalEntries = await Note.find({ userId: (session.user as any).id, isDetailed: true })
+    // -- Journal Entries --
+    const relevantJournalEntries = searchRegex ? await Note.find({ 
+      userId: (session.user as any).id, 
+      isDetailed: true,
+      $or: [
+        { title: { $regex: searchRegex } },
+        { 'blocks.content': { $regex: searchRegex } }
+      ]
+    })
+    .sort({ updatedAt: -1 })
+    .limit(5)
+    .select('title blocks updatedAt')
+    .lean() : [];
+
+    const recentJournalEntries = await Note.find({ userId: (session.user as any).id, isDetailed: true })
       .sort({ updatedAt: -1 })
-      .limit(5)
+      .limit(10)
       .select('title blocks updatedAt')
       .lean();
+
+    const journalEntriesMap = new Map();
+    [...relevantJournalEntries, ...recentJournalEntries].forEach((entry: any) => {
+      journalEntriesMap.set(entry._id.toString(), entry);
+    });
+    const journalEntries = Array.from(journalEntriesMap.values());
 
     const tasks = await Task.find({ userId: (session.user as any).id, status: { $ne: 'completed' } })
       .limit(5)
@@ -114,17 +159,35 @@ export async function POST(req: Request) {
       .lean();
 
     // 2. Construct Context String
-    const strategyContext = strategies.map(s => 
-      `- Strategy: ${s.name} (${s.coreInfo?.executionTimeframe || 'N/A'}). Setup: ${s.setup?.setupName || 'N/A'}`
-    ).join('\n');
+    const strategyContext = strategies.map(s => {
+      const contentPreview = s.blocks && Array.isArray(s.blocks) 
+        ? s.blocks.map((b: any) => b.content || '').join(' ').substring(0, 500) 
+        : '';
+      const additionalNotes = s.additionals?.notes ? `\n  Notes: ${s.additionals.notes.substring(0, 300)}` : '';
+      
+      return `- Strategy: ${s.name}
+  Timeframe: ${s.coreInfo?.executionTimeframe || 'N/A'}
+  Setup: ${s.setup?.setupName || 'N/A'}
+  Entry: ${s.setup?.entrySignal || 'N/A'}
+  Risk: ${s.risk?.riskStrategy || 'N/A'}
+  Content: ${contentPreview}...${additionalNotes}`;
+    }).join('\n\n');
 
     const tradeContext = trades.map(t => 
       `- ${t.symbol} ${t.direction} (${new Date(t.timestampEntry).toLocaleDateString()}). Result: ${t.outcome || 'Pending'} (${t.pnl}${t.pnlUnit || '$'}). Grade: ${t.setupGrade}/5.`
     ).join('\n');
 
-    const journalContext = journalEntries.map(j => 
-      `- Journal: ${j.title} (${new Date(j.updatedAt).toLocaleDateString()})`
-    ).join('\n');
+    const journalContext = journalEntries.map(j => {
+      const contentPreview = j.blocks && Array.isArray(j.blocks) 
+        ? j.blocks.map((b: any) => {
+            if (b.type === 'image') return '[Image]';
+            if (b.type === 'todo') return `[ ] ${b.content}`;
+             if (['h1', 'h2', 'h3'].includes(b.type)) return `\n# ${b.content}\n`;
+            return b.content || '';
+          }).join('\n').substring(0, 5000) 
+        : 'No content';
+      return `- Journal: ${j.title} (${new Date(j.updatedAt).toLocaleDateString()})\n  Content:\n${contentPreview}...`;
+    }).join('\n\n');
 
     const taskContext = tasks.map(t =>
       `- [${t.status.toUpperCase()}] ${t.title} (Priority: ${t.priority})`
@@ -139,7 +202,7 @@ export async function POST(req: Request) {
     ).join('\n');
 
     const notebookContext = notebookNotes.map(n =>
-      `- Note: ${n.title || 'Untitled'} - "${n.content?.substring(0, 50)}..."`
+      `- Note: ${n.title || 'Untitled'} - "${n.content?.substring(0, 1000)}..."`
     ).join('\n');
 
     const checklistContext = checklists.map((c: any) =>
