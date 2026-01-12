@@ -277,3 +277,10 @@ CRT + ORB hybrid
 Auto-detect failed CRTs
 
 CRT session heatmap
+---
+### 🛠️ Forensic Matrix Conditions
+- **CRT Candle ID**: Identification of high-compression Master Candle events.
+- **Master Range Setup**: Mapping of volatility boundaries during contraction.
+- **Fakeout Liquidation**: Validation of the 'Induced Trap' prior to real expansion.
+- **Expansion Validation**: Measurement of the primary explosive move post-contraction.
+- **Midpoint Rejection**: Failure to re-accept values within the original Master Range.

@@ -313,3 +313,10 @@ What liquidity is being targeted
 What invalidates the trade
 
 Which timeframe is in control
+---
+### 🛠️ Forensic Matrix Conditions
+- **HTF Structure (4H Bias)**: Alignment with higher timeframe institutional trend.
+- **External Sweep**: Validation of institutional liquidity capture outside current range.
+- **Order Block Reaction**: Price confirmation off valid supply/demand zones.
+- **Imbalance (FVG)**: Institutional displacement resulting in unfilled orders.
+- **Premium/Discount Zone**: Execution strictly in high-probability pricing territory.

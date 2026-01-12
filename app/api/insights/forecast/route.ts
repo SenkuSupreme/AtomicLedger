@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { fetchMultiTimeframeData, analyzeMarketMultiTimeframe } from '@/lib/analysis_engine';
+import { fetchMultiTimeframeData, analyzeMarketMultiTimeframe, isAnalysisStillValid } from '@/lib/analysis_engine';
 import dbConnect from '@/lib/db';
 import Forecast from '@/lib/models/Forecast';
 
@@ -45,24 +45,35 @@ export async function POST(req: Request) {
         return new NextResponse('Unauthorized', { status: 401 });
       }
   
-      const { symbol } = await req.json();
+       const { symbol, previousAnalysis, force } = await req.json();
   
       if (!symbol) {
         return new NextResponse('Missing symbol', { status: 400 });
       }
   
-      // 1. Fetch multi-timeframe market data (4H via 60min aggregation, 15M, 5M, 1M)
-      // Note: This will make 4 API calls with delays to respect rate limits
-      const tfData = await fetchMultiTimeframeData(symbol);
+      // 1. Try to fetch from DB first if not forced
+      await dbConnect();
+      // @ts-ignore
+      const dbForecast = await Forecast.findOne({ symbol: symbol.toUpperCase() });
       
+      const tfData = await fetchMultiTimeframeData(symbol);
       const hasData = Object.values(tfData).some(candles => candles.length > 0);
+      if (!hasData) return new NextResponse('API Rate Limit Exhausted', { status: 503 });
+      
+      const currentPrice = tfData['1M'].slice(-1)[0]?.close || tfData['15M'].slice(-1)[0]?.close || 0;
 
-      if (!hasData) {
-          console.error(`[FORECAST_POST] No data fetched for ${symbol}. All TwelveData keys exhausted.`);
-          return new NextResponse('All Twelve Data API keys are currently rate-limited. Please wait a moment and try again.', { status: 503 });
+      // 2. Performance Validation Check (Check DB first, then previousAnalysis)
+      if (!force) {
+          const analysisToCheck = dbForecast ? dbForecast.analysis : previousAnalysis;
+          if (analysisToCheck) {
+              const validity = isAnalysisStillValid(analysisToCheck, currentPrice);
+              if (validity.valid) {
+                  return NextResponse.json(analysisToCheck);
+              }
+          }
       }
 
-      // 2. Perform Multi-Timeframe SMC Analysis
+      // 3. Perform Multi-Timeframe SMC Analysis
       const analysis = analyzeMarketMultiTimeframe(symbol.toUpperCase(), tfData);
 
       await dbConnect();

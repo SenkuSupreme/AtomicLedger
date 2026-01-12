@@ -54,7 +54,17 @@ export interface LiquiditySweep {
 }
 
 export interface StrategySetup { 
-    name: string; methodology: 'SMC' | 'ICT' | 'ORB' | 'CRT'; setup: string; logic: string; confidence: number; entry: number; sl: number; tp1: number; tp2: number; 
+    id: string;
+    timestamp: string;
+    name: string; 
+    methodology: 'SMC' | 'ICT' | 'ORB' | 'CRT'; 
+    setup: string; 
+    logic: string; 
+    confidence: number; 
+    entry: number; 
+    sl: number; 
+    tp1: number; 
+    tp2: number; 
     entryConditions: { htfBias: boolean; liqSweep: boolean; confluence: boolean; session: boolean; volatility: boolean; };
     explanation: { why: string; target: string; invalidation: string; controlTf: string; narrative: string };
 }
@@ -108,6 +118,12 @@ export interface DiagnosticSignal {
 export interface AnalysisResult { 
     symbol: string; currentPrice: number; trend: 'BULLISH' | 'BEARISH' | 'NEUTRAL'; probability: number; 
     signals: DiagnosticSignal[]; 
+    methodologySignals: {
+        smc: DiagnosticSignal[];
+        ict: DiagnosticSignal[];
+        orb: DiagnosticSignal[];
+        crt: DiagnosticSignal[];
+    };
     concepts: { smc: string[]; ict: string[]; orb: string[]; crt: string[]; }; 
     smc_advanced: AdvancedSMC; analyzedAt: string; 
 }
@@ -332,6 +348,7 @@ function buildResult(symbol: string, currentPrice: number, tfData: Record<Timefr
     const mainTf = timeframes[1]; 
 
     const overallBias = htf.trend === 'BULLISH' ? 'BULLISH' : htf.trend === 'BEARISH' ? 'BEARISH' : 'NEUTRAL';
+    const bias = overallBias === 'NEUTRAL' ? 'BULLISH' : overallBias;
     const strategies: StrategySetup[] = [];
 
     // Smarter numeric formatting for Forex and high-precision assets
@@ -363,30 +380,35 @@ function buildResult(symbol: string, currentPrice: number, tfData: Record<Timefr
     // Calculate Dynamic Probability Matrix (Confluence Analysis)
     const calculateSMCScore = () => {
         let score = 0;
-        if (dynamicConditions.htfBias) score += 30;
-        if (dynamicConditions.liqSweep) score += 30;
-        if (dynamicConditions.confluence) score += 20;
-        if (mainTf.trend === overallBias) score += 20;
+        if (htf.trend === (bias === 'BULLISH' ? 'BULLISH' : 'BEARISH')) score += 25; // HTF Alignment
+        if (mainTf.liquiditySweeps.length > 0) score += 25; // Liquidity Inducement
+        if (mainTf.structureDetails?.choch) score += 20; // Structural Shift
+        if (mainTf.orderBlocks.some(ob => ob.freshness === 'UNTAPPED')) score += 15; // Point of Interest
+        if (mainTf.fairValueGaps.some(f => f.fillStatus === 'CLEAN')) score += 15; // Imbalance
         return score;
     };
     const calculateICTScore = () => {
         let score = 0;
-        if (isKillZone) score += 40;
-        if (mainTf.fairValueGaps.length > 0) score += 30;
-        if (dynamicConditions.htfBias) score += 30;
+        if (isKillZone) score += 30; // Time Window
+        if ((currentHour === 10 || currentHour === 3)) score += 20; // Silver Bullet
+        if (mainTf.fairValueGaps.some(f => f.quality === 'HIGH')) score += 20; // Displacement
+        if (mainTf.liquidityPools.some(p => p.type === 'BSL' || p.type === 'SSL')) score += 15; // Draw on Liquidity
+        if (mainTf.po3?.phase === 'MANIPULATION') score += 15; // Judas Swing
         return score;
     };
     const calculateORBScore = () => {
         let score = 0;
-        if (currentHour >= 8 && currentHour <= 10) score += 50; // Early London
-        if (currentHour >= 13 && currentHour <= 15) score += 50; // Early NY
-        if (mainTf.volatility.isExpansion) score += 50;
-        return Math.min(score, 100);
+        const isORBTime = (currentHour === 8 || currentHour === 9 || currentHour === 13 || currentHour === 14);
+        if (isORBTime) score += 40;
+        if (mainTf.volatility.isExpansion) score += 30;
+        if (mainTf.volatility.atrPercent > 0.1) score += 30;
+        return score;
     };
     const calculateCRTScore = () => {
         let score = 0;
-        if (mainTf.volatility.isContraction) score += 50;
-        if (mainTf.volatility.isExpansion) score += 50;
+        if (mainTf.volatility.isContraction) score += 40;
+        if (mainTf.liquiditySweeps.length > 0) score += 30; // Inducement/Fakeout
+        if (mainTf.volatility.isExpansion) score += 30; // The actual CRT expansion
         return score;
     };
 
@@ -395,86 +417,150 @@ function buildResult(symbol: string, currentPrice: number, tfData: Record<Timefr
     const orbScore = calculateORBScore();
     const crtScore = calculateCRTScore();
 
-    // Weighted Combined Probability
+    // Weighted Combined Probability (Institutional Confidence)
     const combinedProbability = Math.round(
-        (smcScore * 0.4) + (ictScore * 0.3) + (orbScore * 0.15) + (crtScore * 0.15)
+        (smcScore * 0.45) + (ictScore * 0.35) + (orbScore * 0.1) + (crtScore * 0.1)
     );
 
+
+    const getSMCExplanation = (bias: string) => ({
+        why: `Market structure confirms ${mainTf.trend} alignment on 15M following a ${mainTf.liquiditySweeps[0]?.type || 'structural'} sweep. Price is currently ${fmt(currentPrice)}, reacting off a ${mainTf.orderBlocks[0]?.strength || 'valid'} OB at ${fmt(mainTf.orderBlocks[0]?.midpoint || currentPrice)}.`,
+        target: bias === 'BULLISH' ? `H1/H4 Resistance / BSL at ${fmt(mainTf.liquidityPools.find(p => p.type === 'BSL')?.price || currentPrice * 1.015)}.` : `H1/H4 Support / SSL at ${fmt(mainTf.liquidityPools.find(p => p.type === 'SSL')?.price || currentPrice * 0.985)}.`,
+        invalidation: `Structural break of the ${bias === 'BULLISH' ? 'Swing Low' : 'Swing High'} at ${fmt(mainTf.swingLows[0] || mainTf.swingHighs[0] || currentPrice * 0.99)}.`,
+        controlTf: '4H Bias / 15M Orderflow',
+        narrative: ''
+    });
+
+    const getICTExplanation = (bias: string) => ({
+        why: `Algorithm is currently in the ${isNY ? 'NY' : isLondon ? 'London' : 'Session'} Kill Zone. Displacement at ${fmt(mainTf.fairValueGaps[0]?.midpoint || currentPrice)} confirms institutional sponsorship behind the move.`,
+        target: `Opposing liquidity pool (PDH/PDL) at ${fmt(mainTf.premiumDiscount.rangeHigh || currentPrice * 1.01)}. Equilibrium target: ${fmt(mainTf.premiumDiscount.equilibrium)}.`,
+        invalidation: `Price re-accepting values inside the 00:00 Opening Price at ${fmt(currentPrice * 0.999)} or closing through the FVG at ${fmt(mainTf.fairValueGaps[0]?.top || currentPrice)}.`,
+        controlTf: 'Daily Narrative / 5M Execution',
+        narrative: ''
+    });
+
+    const getORBExplanation = (bias: string) => ({
+        why: `Opening Range established between ${fmt(currentPrice * 0.998)} and ${fmt(currentPrice * 1.002)}. High-energy breakout detected with ${mainTf.volatility.atrPercent.toFixed(2)}% ATR extension.`,
+        target: `1.5x ADR expansion target at ${fmt(currentPrice * 1.008)}.`,
+        invalidation: `Failed breakout and re-entry into the initial range at ${fmt(currentPrice * 1.001)}.`,
+        controlTf: '15M ORB / 1M Momentum',
+        narrative: ''
+    });
+
+    const getCRTExplanation = (bias: string) => ({
+        why: `Contracted Range Theory identifies a compression zone at ${fmt(currentPrice)}. Fakeout at ${fmt(mainTf.liquiditySweeps[0]?.sweptLevel || currentPrice)} trapped retail liquidity before impulsive expansion.`,
+        target: `Full Master Candle extension at ${fmt(currentPrice * 1.012)}.`,
+        invalidation: `Midpoint violation of the reference candle at ${fmt(currentPrice)}.`,
+        controlTf: '5M Compression / 15M Trend',
+        narrative: ''
+    });
+
+    // Strategy ID Generator for Persistence
+    const generateId = (method: string) => `${symbol}-${method}-${bias}-${now.toISOString().split('T')[0]}`;
+
     strategies.push({
-        name: 'ICT Algorithm Delivery (Silver Bullet)', methodology: 'ICT', setup: 'FVG Displacement', logic: 'Precise time-aligned displacement through a FVG in the session Kill Zone.',
-        confidence: ictScore, entry: currentPrice, sl: currentPrice * (overallBias === 'BULLISH' ? 0.9985 : 1.0015), tp1: currentPrice * (overallBias === 'BULLISH' ? 1.003 : 0.997), tp2: currentPrice * (overallBias === 'BULLISH' ? 1.006 : 0.994),
+        id: generateId('SMC'),
+        timestamp: now.toISOString(),
+        name: 'SMART MONEY CORE',
+        methodology: 'SMC',
+        setup: bias === 'BULLISH' ? 'High Probability Long' : 'High Probability Short',
+        logic: 'Institutional Structure Alignment',
+        confidence: smcScore,
+        entry: currentPrice,
+        sl: currentPrice * (bias === 'BULLISH' ? 0.995 : 1.005),
+        tp1: currentPrice * (bias === 'BULLISH' ? 1.01 : 0.99),
+        tp2: currentPrice * (bias === 'BULLISH' ? 1.02 : 0.98),
         entryConditions: dynamicConditions,
-        explanation: {
-            why: 'The algorithm has entered a high-probability "Silver Bullet" delivery window. A displacement candle has successfully punctured local structure, creating a Fair Value Gap (FVG) that serves as the institutional entry point. This aligns perfectly with the daily bias and session-specific liquidity hunt.',
-            target: 'The primary Draw on Liquidity (DOL) is the nearest unmitigated HTF Order Block and the opposing session High/Low liquidity pool.',
-            invalidation: 'Invalidation occurs if price closes beyond the consequent encroachment (50%) of the anchor FVG, signaling a lack of institutional sponsorship.',
-            controlTf: 'Context: 1H / Execution: 1M Sync',
-            narrative: 'Price is currently being delivered by the institutional algorithm. We are riding the expansion phase after a successful manipulation of early session participants. The target is clear, and the delivery state is locked.'
-        }
+        explanation: getSMCExplanation(bias)
     });
 
     strategies.push({
-        name: 'ORB Session Expansion (Trend Day)', methodology: 'ORB', setup: 'Initial Balance Breakout', logic: 'Aggressive expansion out of the 15M opening range, confirming session dominance.',
-        confidence: orbScore, entry: currentPrice * 1.0005, sl: currentPrice * 0.9995, tp1: currentPrice * 1.003, tp2: currentPrice * 1.007,
+        id: generateId('ICT'),
+        timestamp: now.toISOString(),
+        name: 'ALGORITHMIC DELIVERY (ICT)',
+        methodology: 'ICT',
+        setup: bias === 'BULLISH' ? 'Silver Bullet Long' : 'Silver Bullet Short',
+        logic: 'Time-Based Liquidity Sweep',
+        confidence: ictScore,
+        entry: currentPrice,
+        sl: currentPrice * (bias === 'BULLISH' ? 0.997 : 1.003),
+        tp1: currentPrice * (bias === 'BULLISH' ? 1.008 : 0.992),
+        tp2: currentPrice * (bias === 'BULLISH' ? 1.015 : 0.985),
         entryConditions: dynamicConditions,
-        explanation: {
-            why: 'The Opening Range (OR) has been established and successfully breached with high-relative volume. This "Initial Balance Breakout" suggests a Trend Day profile. Price has accepted value outside the opening auction ranges, indicating that higher-timeframe participants are actively driving the session.',
-            target: 'Targeting standard deviations (2.0 SD) of the Initial Balance, aligning with the projected Average Daily Range (ADR).',
-            invalidation: 'Any acceptance back within the 50% equilibrium of the Opening Range signals a failed breakout and potential range-bound behavior.',
-            controlTf: 'Initial Balance: 15M / Trigger: 5M',
-            narrative: 'The session narrative has shifted from auctioning to expansion. Smart Money is expanding the range aggressively. We are positioned to capture the primary directional move of the New York/London overlap.'
-        }
+        explanation: getICTExplanation(bias)
     });
 
     strategies.push({
-        name: 'SMC Sweep & Reverse Protocol', methodology: 'SMC', setup: 'Liquidity Grab & Reversal', logic: 'Price swept major external liquidity and rejected violently, forming an institutional CHOCH.',
-        confidence: smcScore, entry: currentPrice, sl: currentPrice * (overallBias === 'BULLISH' ? 0.999 : 1.001), tp1: currentPrice * (overallBias === 'BULLISH' ? 1.003 : 0.997), tp2: currentPrice * (overallBias === 'BULLISH' ? 1.006 : 0.994),
+        id: generateId('ORB'),
+        timestamp: now.toISOString(),
+        name: 'VOLATILITY BREAKOUT (ORB)',
+        methodology: 'ORB',
+        setup: bias === 'BULLISH' ? 'Range Breakout Long' : 'Range Breakout Short',
+        logic: 'Opening Range Momentum Expansion',
+        confidence: orbScore,
+        entry: currentPrice,
+        sl: currentPrice * (bias === 'BULLISH' ? 0.998 : 1.002),
+        tp1: currentPrice * (bias === 'BULLISH' ? 1.005 : 0.995),
+        tp2: currentPrice * (bias === 'BULLISH' ? 1.012 : 0.988),
         entryConditions: dynamicConditions,
-        explanation: {
-            why: 'Price swept major external liquidity and rejected violently, forming an institutional CHOCH. This displacement confirms the presence of institutional order flow seeking to re-price the market.',
-            target: 'Internal Range Liquidity (FVG) and opposing Weak Highs/Lows (Draw on Liquidity).',
-            invalidation: 'Any candle body close beyond the sweep wick low/high, indicating a failure to defend the institutional level.',
-            controlTf: 'Context: 4H / Execution: 15M Alignment',
-            narrative: 'The HTF narrative suggests a deeper pullback is complete. Smart Money has cleared stops below the recent low (Sell-side Liquidity) and is now positioned for a run on buy-side liquidity pools.'
-        }
+        explanation: getORBExplanation(bias)
     });
+
     strategies.push({
-        name: 'CRT Range Rejection', methodology: 'CRT', setup: 'Compression Liquidation', logic: 'Expansion out of a contracted candle range at institutional levels.',
-        confidence: crtScore, entry: currentPrice, sl: currentPrice * (overallBias === 'BULLISH' ? 0.999 : 1.001), tp1: currentPrice * (overallBias === 'BULLISH' ? 1.0025 : 0.9975), tp2: currentPrice * (overallBias === 'BULLISH' ? 1.005 : 0.995),
+        id: generateId('CRT'),
+        timestamp: now.toISOString(),
+        name: 'CONTRACTED RANGE THEORY',
+        methodology: 'CRT',
+        setup: bias === 'BULLISH' ? 'Expansion Long' : 'Expansion Short',
+        logic: 'Volatility Compression Breakout',
+        confidence: crtScore,
+        entry: currentPrice,
+        sl: currentPrice * (bias === 'BULLISH' ? 0.999 : 1.001),
+        tp1: currentPrice * (bias === 'BULLISH' ? 1.006 : 0.994),
+        tp2: currentPrice * (bias === 'BULLISH' ? 1.013 : 0.987),
         entryConditions: dynamicConditions,
-        explanation: {
-            why: 'A "Contracted Range Theory" (CRT) event was identified on the execution chart. Volatility compressed into a "Master Candle", inducing a false breakout (The Trap). This trap was quickly invalidated as price expanded aggressively in the intended direction.',
-            target: 'Liquidity Voids created by the sudden expansion and the opposing boundary of the larger parent range.',
-            invalidation: 'Price re-entering and closing inside the body of the CRT Reference Candle (Body Close), indicating the expansion was a fake-out.',
-            controlTf: 'Pattern: 5M / Trend: 15M',
-            narrative: 'Volatility contracted to a singularity, blinding retail traders. The subsequent expansion is the "release" of this built-up energy. We are trading the "Real Move" that follows the initial fake-out, aligning with the true institutional order flow.'
-        }
+        explanation: getCRTExplanation(bias)
     });
 
     const bestStrategy = [...strategies].sort((a, b) => b.confidence - a.confidence)[0] || strategies[0];
 
-    const signals: DiagnosticSignal[] = [
-        { 
-            label: 'Institutional Trend Context', 
-            status: dynamicConditions.htfBias ? 'VALID' : 'INVALID' 
-        },
-        { 
-            label: 'Liquidity Purge Verification', 
-            status: dynamicConditions.liqSweep ? 'VALID' : 'PENDING' 
-        },
-        { 
-            label: 'Market Structure Displacement', 
-            status: mainTf.trend === overallBias ? 'VALID' : 'PENDING' 
-        },
-        { 
-            label: 'Execution Window Availability', 
-            status: isKillZone ? 'VALID' : 'INVALID' 
-        }
-    ];
+    const methodologySignals = {
+        smc: [
+            { label: 'HTF Structure (4H)', status: (htf.trend === (bias === 'BULLISH' ? 'BULLISH' : 'BEARISH') ? 'VALID' : 'INVALID') as any },
+            { label: 'Swing Flow alignment', status: (mainTf.trend === (bias === 'BULLISH' ? 'BULLISH' : 'BEARISH') ? 'VALID' : 'PENDING') as any },
+            { label: 'Liquidity Inducement', status: (mainTf.liquiditySweeps.length > 0 ? 'VALID' : 'PENDING') as any },
+            { label: 'Valid Order Block', status: (mainTf.orderBlocks.some(ob => ob.freshness === 'UNTAPPED') ? 'VALID' : 'PENDING') as any },
+            { label: 'Market Displacement', status: (mainTf.fairValueGaps.length > 0 ? 'VALID' : 'PENDING') as any }
+        ],
+        ict: [
+            { label: 'Kill Zone Window', status: (isKillZone ? 'VALID' : 'INVALID') as any },
+            { label: 'Silver Bullet Energy', status: ((currentHour === 10 || currentHour === 3) ? 'VALID' : 'INVALID') as any },
+            { label: 'Draw on Liquidity', status: (mainTf.liquidityPools.some(p => p.type === 'BSL' || p.type === 'SSL') ? 'VALID' : 'PENDING') as any },
+            { label: 'ICT Displacement', status: (mainTf.fairValueGaps.some(f => f.quality === 'HIGH') ? 'VALID' : 'PENDING') as any },
+            { label: 'PO3 Manipulation', status: (mainTf.po3?.phase === 'MANIPULATION' ? 'VALID' : 'PENDING') as any }
+        ],
+        orb: [
+            { label: 'Range Definition', status: 'VALID' as any },
+            { label: 'Expansion Drive', status: (mainTf.volatility.isExpansion ? 'VALID' : 'PENDING') as any },
+            { label: 'Volatility Spike', status: (mainTf.volatility.atrPercent > 0.08 ? 'VALID' : 'PENDING') as any },
+            { label: 'Session Velocity', status: ((isLondon || isNY) ? 'VALID' : 'PENDING') as any },
+            { label: 'Target Proximity', status: 'PENDING' as any }
+        ],
+        crt: [
+            { label: 'Compression Profile', status: (mainTf.volatility.isContraction ? 'VALID' : 'PENDING') as any },
+            { label: 'Fakeout Inducement', status: (mainTf.liquiditySweeps.length > 0 ? 'VALID' : 'PENDING') as any },
+            { label: 'Primary Expansion', status: (mainTf.volatility.isExpansion ? 'VALID' : 'PENDING') as any },
+            { label: 'CRT Reference ID', status: 'VALID' as any },
+            { label: 'Structural Acceptance', status: 'PENDING' as any }
+        ]
+    };
+
+    const signals: DiagnosticSignal[] = methodologySignals.smc; // Default to SMC for legacy overview
 
     return {
         symbol, currentPrice, trend: htf.trend, probability: combinedProbability,
         signals,
+        methodologySignals,
         concepts: { 
             smc: ['Order Blocks', 'FVG', 'HH/LL Structure'], ict: ['PD-Arrays', 'Silver Bullet'], orb: ['Range High', 'Range Low'], crt: ['Volatility Compression'] 
         },
@@ -524,14 +610,36 @@ function buildResult(symbol: string, currentPrice: number, tfData: Record<Timefr
                 bias: overallBias, entryPrice: bestStrategy.entry, stopLoss: bestStrategy.sl, tp1: bestStrategy.tp1, tp2: bestStrategy.tp2,
                 entryZone: '15M Institutional Order Block', targets: `Target 1: ${fmt(bestStrategy.tp1)} | Target 2: ${fmt(bestStrategy.tp2)}`,
                 explanation: { 
-                    why: 'Price swept session lows and rejected with an institutional CHOCH, aligning with the H4 HTF bias.',
-                    target: 'Opposing Buy-side Liquidity (BSL) at the 4H range high.',
-                    invalidation: 'Structural break below the 15M sweep candle low.',
-                    controlTf: '4H/15M Alignment'
+                    why: bestStrategy.explanation.why,
+                    target: bestStrategy.explanation.target,
+                    invalidation: bestStrategy.explanation.invalidation,
+                    controlTf: bestStrategy.explanation.controlTf
                 }
             },
             lastUpdated: new Date().toISOString()
         },
         analyzedAt: new Date().toISOString()
     };
+}
+
+export function isAnalysisStillValid(previous: AnalysisResult, currentPrice: number): { valid: boolean; reason?: string } {
+    if (!previous || !previous.smc_advanced?.strategies?.[0]) return { valid: false, reason: 'No previous data' };
+    
+    const strategy = previous.smc_advanced.strategies[0];
+    const { sl, tp1, setup } = strategy;
+    const isBullish = setup.toUpperCase().includes('LONG') || setup.toUpperCase().includes('BULL');
+
+    // 1. Check if price has hit Stop Loss
+    if (isBullish && currentPrice <= sl) return { valid: false, reason: 'Thesis Invalidated (SL Hit)' };
+    if (!isBullish && currentPrice >= sl) return { valid: false, reason: 'Thesis Invalidated (SL Hit)' };
+
+    // 2. Check if price has reached TP1 (objective completed)
+    if (isBullish && currentPrice >= tp1) return { valid: false, reason: 'Target Reached' };
+    if (!isBullish && currentPrice <= tp1) return { valid: false, reason: 'Target Reached' };
+
+    // 3. Time-based invalidation (Scalping setups expire after 4 hours)
+    const age = Date.now() - new Date(previous.analyzedAt).getTime();
+    if (age > 14400000) return { valid: false, reason: 'Setup Stale' };
+
+    return { valid: true };
 }

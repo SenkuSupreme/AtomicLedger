@@ -2,15 +2,17 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
     ArrowLeft, TrendingUp, TrendingDown, Target, Zap, 
     Activity, Shield, RefreshCw, 
     Scale, CandlestickChart, Globe, Layout, 
     Eye, MousePointer2, Briefcase, Lock, Compass,
-    CheckCircle2, ZapOff
+    CheckCircle2, ZapOff, BrainCircuit, Sparkles, Loader2, ChevronDown
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 // Enhanced Types
 interface CandleMetrics { bodySize: number; upperWick: number; lowerWick: number; type: 'BULLISH' | 'BEARISH' | 'DOJI'; range: number; volatility: number; ohlc: { o: number; h: number; l: number; c: number }; }
@@ -59,7 +61,21 @@ interface AdvancedSMC {
     lastUpdated: string; 
 }
 
-interface AnalysisResult { symbol: string; currentPrice: number; trend: string; probability: number; smc_advanced: AdvancedSMC; analyzedAt: string; }
+interface AnalysisResult { 
+    symbol: string; 
+    currentPrice: number; 
+    trend: string; 
+    probability: number; 
+    signals?: any[];
+    methodologySignals?: {
+        smc: any[];
+        ict: any[];
+        orb: any[];
+        crt: any[];
+    };
+    smc_advanced: AdvancedSMC; 
+    analyzedAt: string; 
+}
 
 const fmt = (val: number | undefined, decimals?: number): string => {
     if (val === undefined || val === null || isNaN(val)) return '0.00000';
@@ -85,20 +101,30 @@ export default function ICTMasterclassPage() {
     // Methodology Sync
     const [viewMode, setViewMode] = useState<'SMC' | 'ICT' | 'ORB' | 'CRT'>('ICT');
 
-    const triggerNewAnalysis = async () => {
+    const triggerNewAnalysis = async (force: boolean = false) => {
         setLoading(true);
+        const toastId = toast.loading(force ? "Initiating ICT Force Sync..." : "Validating Institutional Signal...");
         try {
+            const previousAnalysis = !force ? data : null;
             const res = await fetch(`/api/insights/forecast`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ symbol })
+                body: JSON.stringify({ symbol, previousAnalysis, force })
             });
             const result = await res.json();
             if (result && result.smc_advanced) {
+                if (!force && data && result.analyzedAt === data.analyzedAt) {
+                    toast.success("ICT Signal still valid. Narrative preserved.", { id: toastId });
+                } else if (force) {
+                    toast.success("ICT Matrix Synchronized. New Silver Bullet window mapped.", { id: toastId });
+                } else {
+                    toast.info("Signal Invalidated. New ICT thesis being generated...", { id: toastId });
+                }
                 setData(result);
             }
         } catch (e) {
             console.error("Analysis error:", e);
+            toast.error("ICT synchronization failed.", { id: toastId });
         } finally {
             setLoading(false);
         }
@@ -108,17 +134,18 @@ export default function ICTMasterclassPage() {
         const fetchInitial = async () => {
             setLoading(true);
             try {
-                const res = await fetch(`/api/insights/forecast?symbol=${symbol}`);
+                const previousAnalysis = null;
+                const res = await fetch(`/api/insights/forecast`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol, previousAnalysis, force: false })
+                });
                 if (res.ok) {
                     const result = await res.json();
                     if (result && result.smc_advanced) {
                         setData(result);
                         setLoading(false);
-                    } else {
-                        triggerNewAnalysis();
                     }
-                } else {
-                    triggerNewAnalysis();
                 }
             } catch (e) {
                 console.error("Fetch error:", e);
@@ -202,12 +229,21 @@ export default function ICTMasterclassPage() {
                 <header className="flex flex-col lg:flex-row lg:items-center justify-between border-b border-white/5 pb-8 gap-6">
                     <div className="flex items-center gap-5">
                         <div className="flex items-center gap-3">
-                            <Button variant="outline" onClick={() => router.back()} className="h-10 w-10 border-white/5 p-0 rounded-xl bg-card/40 backdrop-blur-3xl transition-transform hover:scale-105 active:scale-95">
-                                <ArrowLeft size={18} />
-                            </Button>
-                            <Button variant="outline" onClick={triggerNewAnalysis} className="h-10 w-10 border-white/5 p-0 rounded-xl bg-card/40 backdrop-blur-3xl transition-transform hover:scale-105 active:scale-95 group">
-                                <RefreshCw size={16} className={`${loading ? 'animate-spin' : 'group-active:animate-spin'}`} />
-                            </Button>
+                            <Tooltip text="Go Back">
+                                <Button variant="outline" onClick={() => router.back()} className="h-10 w-10 border-white/5 p-0 rounded-xl bg-card/40 backdrop-blur-3xl transition-transform hover:scale-105 active:scale-95">
+                                    <ArrowLeft size={18} />
+                                </Button>
+                            </Tooltip>
+                            <Tooltip text="Validate ICT Narrative">
+                                <Button variant="outline" onClick={() => triggerNewAnalysis(false)} className="h-10 w-10 border-white/5 p-0 rounded-xl bg-card/40 backdrop-blur-3xl transition-transform hover:scale-105 active:scale-95 group">
+                                    <RefreshCw size={16} className={`${loading ? 'animate-spin' : 'group-active:animate-spin'}`} />
+                                </Button>
+                            </Tooltip>
+                            <Tooltip text="Force ICT Algo Sync">
+                                <Button variant="outline" onClick={() => triggerNewAnalysis(true)} title="Force Sync" className="h-10 w-10 border-white/5 p-0 rounded-xl bg-primary/10 text-primary transition-transform hover:scale-105 active:scale-95 group">
+                                    <Zap size={16} />
+                                </Button>
+                            </Tooltip>
                         </div>
                         <div>
                             <div className="flex items-center gap-2 mb-0.5">
@@ -268,7 +304,7 @@ export default function ICTMasterclassPage() {
                 <div className="space-y-10">
                     {/* Collapsible AI Narrative Panel */}
                     <div className="w-full">
-                        <AINarrativePanel strategy={bestStrategy} loading={loading} />
+                        <AINarrativePanel data={data} strategy={bestStrategy} symbol={symbol} loading={loading} />
                     </div>
 
                     {/* 1. Tactical Execution Protocol (FULL WIDTH) */}
@@ -308,42 +344,9 @@ export default function ICTMasterclassPage() {
                                 <div className="space-y-6">
                                     <h4 className="text-[11px] font-black uppercase tracking-[0.4em] text-muted-foreground italic">Matrix Conditions</h4>
                                     <div className="grid grid-cols-1 gap-3">
-                                        {viewMode === 'SMC' && (
-                                            <>
-                                                <ConditionItem label="SMC Structure Alignment" active={bestStrategy?.entryConditions?.htfBias} />
-                                                <ConditionItem label="External Liquidity Purge" active={bestStrategy?.entryConditions?.liqSweep} />
-                                                <ConditionItem label="Fair Value Convergence" active={bestStrategy?.entryConditions?.confluence} />
-                                                <ConditionItem label="Power of 3 (PO3) State" active={tfData.po3?.phase !== 'ACCUMULATION'} />
-                                                <ConditionItem label="Silver Bullet Kill Zone" active={bestStrategy?.entryConditions?.session} />
-                                            </>
-                                        )}
-                                        {viewMode === 'ICT' && (
-                                            <>
-                                                <ConditionItem label="Power of 3 (PO3) State" active={tfData.po3?.phase !== 'ACCUMULATION'} />
-                                                <ConditionItem label="Silver Bullet Window" active={bestStrategy?.entryConditions?.session} />
-                                                <ConditionItem label="Judas Swing Detected" active={bestStrategy?.entryConditions?.liqSweep} />
-                                                <ConditionItem label="Liquidity Run Maturity" active={bestStrategy?.entryConditions?.confluence} />
-                                                <ConditionItem label="Fair Value Convergence" active={bestStrategy?.entryConditions?.htfBias} />
-                                            </>
-                                        )}
-                                        {viewMode === 'ORB' && (
-                                            <>
-                                                <ConditionItem label="Opening Range Zone" active={bestStrategy?.entryConditions?.session} />
-                                                <ConditionItem label="Breakout Momentum" active={bestStrategy?.entryConditions?.volatility} />
-                                                <ConditionItem label="Volume Confirmation" active={bestStrategy?.entryConditions?.confluence} />
-                                                <ConditionItem label="Session Wrap Sync" active={bestStrategy?.entryConditions?.htfBias} />
-                                                <ConditionItem label="30M Range Validity" active={bestStrategy?.entryConditions?.liqSweep} />
-                                            </>
-                                        )}
-                                        {viewMode === 'CRT' && (
-                                            <>
-                                                <ConditionItem label="Range Compression" active={tfData.volatility?.isContraction} />
-                                                <ConditionItem label="Expansion Gap Shift" active={bestStrategy?.entryConditions?.volatility} />
-                                                <ConditionItem label="Manipulation Wick" active={bestStrategy?.entryConditions?.liqSweep} />
-                                                <ConditionItem label="Volatility Spike Sync" active={bestStrategy?.entryConditions?.confluence} />
-                                                <ConditionItem label="Accumulation Rejection" active={bestStrategy?.entryConditions?.htfBias} />
-                                            </>
-                                        )}
+                                        {(data?.methodologySignals?.[viewMode.toLowerCase() as keyof typeof data.methodologySignals] || [])?.map((sig: any, i: number) => (
+                                            <ConditionItem key={i} label={sig.label} active={sig.status === 'VALID'} />
+                                        ))}
                                     </div>
                                 </div>
                                 <div className="pt-8 border-t border-white/5 space-y-4">
@@ -535,7 +538,7 @@ export default function ICTMasterclassPage() {
                         </div>
                     </TechnicalSection>
 
-                    <TechnicalSection title={`Institutional ${getDynamicLabel('OB')}s`} icon={Briefcase} count={(tfData.orderBlocks?.length || 0) + (tfData.fairValueGaps?.length || 0)}>
+                    <TechnicalSection title={`ICT Displacement (${getDynamicLabel('OB')})`} icon={Briefcase} count={(tfData.orderBlocks?.length || 0) + (tfData.fairValueGaps?.length || 0)}>
                         <div className="space-y-8 max-h-[600px] overflow-y-auto pr-2 scrollbar-hide">
                             <div>
                                 <div className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] mb-4 italic">Supply / Demand Blocks</div>
@@ -628,12 +631,7 @@ export default function ICTMasterclassPage() {
                     </TechnicalSection>
                 </div>
 
-                <footer className="text-center py-20 space-y-4 opacity-30">
-                    <p className="text-[11px] font-black text-muted-foreground uppercase tracking-[1em] italic">AtomicLedger Neural Execution Environment // {viewMode} Ver 4.2.0</p>
-                    <div className="text-[9px] font-bold text-muted-foreground italic tracking-widest px-20 max-w-4xl mx-auto leading-relaxed">
-                        Data Synthesized from institutional feeds using multi-timeframe structural logic. Every calculation is derived from real-time volatility and structural shifts.
-                    </div>
-                </footer>
+                <AINarrativePanel data={data} strategy={bestStrategy} symbol={symbol} loading={loading} />
 
             </div>
         </div>
@@ -641,8 +639,69 @@ export default function ICTMasterclassPage() {
 }
 
 
-function AINarrativePanel({ strategy, loading }: { strategy: StrategySetup | undefined; loading: boolean }) {
-    const [isOpen, setIsOpen] = useState(true);
+function AINarrativePanel({ data, strategy, symbol, loading }: { data: AnalysisResult; strategy: StrategySetup | undefined; symbol: string; loading: boolean }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [narrative, setNarrative] = useState<string>('');
+    const [generating, setGenerating] = useState(false);
+
+    useEffect(() => {
+        if (strategy?.explanation?.narrative && strategy.explanation.narrative.length > 0) {
+            setNarrative(strategy.explanation.narrative);
+        } else if (strategy) {
+            generateNarrative();
+        }
+    }, [strategy]);
+
+    const generateNarrative = async () => {
+        if (!strategy || !data) return;
+        setGenerating(true);
+        try {
+            const mainTf = data.smc_advanced.timeframes.find(tf => tf.timeframe === '15M') || data.smc_advanced.timeframes[0];
+            
+            const context = {
+                symbol,
+                currentPrice: data.currentPrice,
+                methodology: strategy.methodology,
+                bias: strategy.setup,
+                timeframeContext: "4H Bias | 15M Structure | 1/5M Execution",
+                orderBlockHigh: mainTf.orderBlocks?.[0]?.top,
+                orderBlockLow: mainTf.orderBlocks?.[0]?.bottom,
+                fvgHigh: mainTf.fairValueGaps?.[0]?.top,
+                fvgLow: mainTf.fairValueGaps?.[0]?.bottom,
+                entryPrice: strategy.entry,
+                stopLoss: strategy.sl,
+                tp1: strategy.tp1,
+                tp2: strategy.tp2,
+                confluenceScore: strategy.confidence,
+                htfTrend: data.smc_advanced.overallBias,
+                ltfTrend: mainTf.trend,
+                methodologyConfluences: data.methodologySignals ? {
+                    SMC: data.methodologySignals.smc.map((s: any) => `${s.label}: ${s.status}`).join(', '),
+                    ICT: data.methodologySignals.ict.map((s: any) => `${s.label}: ${s.status}`).join(', '),
+                    ORB: data.methodologySignals.orb.map((s: any) => `${s.label}: ${s.status}`).join(', '),
+                    CRT: data.methodologySignals.crt.map((s: any) => `${s.label}: ${s.status}`).join(', ')
+                } : undefined
+            };
+
+            const res = await fetch('/api/ai-narrative', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(context)
+            });
+
+            if (res.ok) {
+                const json = await res.json();
+                setNarrative(json.narrative);
+            } else {
+                setNarrative("### FORENSIC LINK INTERRUPT\n\nThe neural engine encountered an anomaly while decrypting market delivery logic.");
+            }
+        } catch (e) {
+            console.error("Narrative generation failed", e);
+            setNarrative("### NEURAL SYNC FAILURE\n\nConnection to the institutional core timed out.");
+        } finally {
+            setGenerating(false);
+        }
+    };
 
     if (loading || !strategy) return null;
 
@@ -663,8 +722,20 @@ function AINarrativePanel({ strategy, loading }: { strategy: StrategySetup | und
                         </div>
                     </div>
                 </div>
-                <div className={`p-3 rounded-full border border-white/5 bg-white/5 transition-all duration-500 ${isOpen ? 'rotate-180 bg-primary/20 border-primary/30' : ''}`}>
-                    <ArrowLeft size={16} className="-rotate-90 text-primary/50" />
+                <div className="flex items-center gap-4">
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        disabled={generating}
+                        onClick={(e) => { e.stopPropagation(); generateNarrative(); }}
+                        className="h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-[10px] font-black uppercase tracking-widest italic flex items-center gap-3 px-6 shadow-xl"
+                    >
+                        {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} className="text-primary" />}
+                        {generating ? 'Transmitting...' : 'Decrypt Logic'}
+                    </Button>
+                    <div className={`p-3 rounded-full border border-white/5 bg-white/5 transition-all duration-500 ${isOpen ? 'rotate-180 bg-primary/20 border-primary/30' : ''}`}>
+                        <ChevronDown size={16} className="text-primary/50" />
+                    </div>
                 </div>
             </div>
 
@@ -677,17 +748,38 @@ function AINarrativePanel({ strategy, loading }: { strategy: StrategySetup | und
                     className="px-10 pb-10"
                 >
                     <div className="space-y-10 pt-8 border-t border-white/10">
+                        {/* Market Context Section */}
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:items-center">
                             <div className="lg:col-span-8 space-y-6">
                                 <div className="space-y-4">
                                     <div className="text-[10px] font-black text-primary uppercase tracking-[0.5em] flex items-center gap-3">
                                         <Globe size={12} className="text-primary/60" /> Market Context & Institutional Narrative
                                     </div>
-                                    <p className="text-xl font-medium text-foreground/90 leading-relaxed italic border-l-[3px] border-primary/40 pl-8 py-2 relative">
-                                        <span className="absolute left-0 top-0 text-6xl text-primary/10 select-none">"</span>
-                                        {strategy.explanation?.narrative || 'Aggregating order flow data and structural shifts for synthesis...'}
-                                        <span className="absolute bottom-0 right-0 text-6xl text-primary/10 select-none">"</span>
-                                    </p>
+                                    <div className="text-base font-medium text-foreground/80 leading-relaxed italic border-l-[3px] border-primary/40 pl-8 py-2 relative markdown-narrative">
+                                        {generating ? (
+                                            <div className="space-y-3">
+                                                <div className="h-4 bg-primary/10 rounded animate-pulse w-full" />
+                                                <div className="h-4 bg-primary/10 rounded animate-pulse w-5/6" />
+                                                <div className="h-4 bg-primary/10 rounded animate-pulse w-4/6" />
+                                            </div>
+                                        ) : (
+                                            <ReactMarkdown
+                                                components={{
+                                                    h1: ({node, ...props}) => <h1 className="text-xl font-black italic uppercase tracking-widest text-white mb-4 mt-6 first:mt-0" {...props} />,
+                                                    h2: ({node, ...props}) => <h2 className="text-lg font-black italic uppercase tracking-wider text-primary mb-3 mt-8" {...props} />,
+                                                    h3: ({node, ...props}) => <h3 className="text-md font-black italic uppercase tracking-wide text-white/90 mb-2 mt-6" {...props} />,
+                                                    p: ({node, ...props}) => <p className="mb-4 last:mb-0" {...props} />,
+                                                    strong: ({node, ...props}) => <strong className="text-primary/90 font-black not-italic" {...props} />,
+                                                    ul: ({node, ...props}) => <ul className="space-y-2 mb-4 list-none" {...props} />,
+                                                    li: ({node, ...props}) => (
+                                                        <li className="flex items-start gap-2 before:content-['//'] before:text-primary/40 before:font-mono before:text-[10px] before:mt-1" {...props} />
+                                                    ),
+                                                }}
+                                            >
+                                                {narrative || 'Awaiting forensic synthesis...'}
+                                            </ReactMarkdown>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="space-y-4">
                                     <div className="text-[10px] font-black text-primary/60 uppercase tracking-[0.5em] flex items-center gap-3">
@@ -720,6 +812,7 @@ function AINarrativePanel({ strategy, loading }: { strategy: StrategySetup | und
                             </div>
                         </div>
 
+                        {/* Convergence Badge */}
                         <div className="flex items-center justify-between p-6 bg-gradient-to-r from-primary/10 via-transparent to-transparent border border-primary/20 rounded-2xl overflow-hidden">
                             <div className="flex items-center gap-6">
                                 <div className="flex flex-col">
@@ -737,6 +830,29 @@ function AINarrativePanel({ strategy, loading }: { strategy: StrategySetup | und
                     </div>
                 </motion.div>
             )}
+        </div>
+    );
+}
+
+
+function Tooltip({ children, text }: { children: React.ReactNode, text: string }) {
+    const [isHovered, setIsHovered] = useState(false);
+    return (
+        <div className="relative" onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
+            {children}
+            <AnimatePresence>
+                {isHovered && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 5, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 5, scale: 0.95 }}
+                        className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-foreground text-background text-[9px] font-black uppercase tracking-widest rounded-lg whitespace-nowrap z-[100] pointer-events-none shadow-2xl border border-white/10"
+                    >
+                        {text}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-foreground" />
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

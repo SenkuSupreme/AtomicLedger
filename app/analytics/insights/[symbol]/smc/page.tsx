@@ -2,15 +2,17 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
     ArrowLeft, TrendingUp, TrendingDown, Target, Zap, 
     Activity, Shield, RefreshCw, 
     Scale, CandlestickChart, Globe, Layout, 
     Eye, MousePointer2, Briefcase, Lock, Compass,
-    CheckCircle2, ZapOff
+    CheckCircle2, ZapOff, BrainCircuit, Sparkles, Loader2, ChevronDown
 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 // Enhanced Types
 // Enhanced Types matching analysis_engine.ts
@@ -91,7 +93,21 @@ interface AdvancedSMC {
     lastUpdated: string; 
 }
 
-interface AnalysisResult { symbol: string; currentPrice: number; trend: string; probability: number; smc_advanced: AdvancedSMC; analyzedAt: string; }
+interface AnalysisResult { 
+    symbol: string; 
+    currentPrice: number; 
+    trend: string; 
+    probability: number; 
+    signals?: any[];
+    methodologySignals?: {
+        smc: any[];
+        ict: any[];
+        orb: any[];
+        crt: any[];
+    };
+    smc_advanced: AdvancedSMC; 
+    analyzedAt: string; 
+}
 
 const fmt = (val: number | undefined, decimals?: number): string => {
     if (val === undefined || val === null || isNaN(val)) return '0.00000';
@@ -117,20 +133,31 @@ export default function SMCMasterclassPage() {
     // Methodology Sync
     const [viewMode, setViewMode] = useState<'SMC' | 'ICT' | 'ORB' | 'CRT'>('SMC');
 
-    const triggerNewAnalysis = async () => {
+    const triggerNewAnalysis = async (force: boolean = false) => {
         setLoading(true);
+        const toastId = toast.loading(force ? "Initiating Force Synchronization..." : "Validating Neural Signal...");
         try {
+            const previousAnalysis = !force ? data : null;
             const res = await fetch(`/api/insights/forecast`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ symbol })
+                body: JSON.stringify({ symbol, previousAnalysis, force })
             });
             const result = await res.json();
+            
             if (result && result.smc_advanced) {
+                if (!force && data && result.analyzedAt === data.analyzedAt) {
+                    toast.success("Current signal is still valid. Thesis maintained.", { id: toastId });
+                } else if (force) {
+                    toast.success("Matrix Synchronized. New forensic map generated.", { id: toastId });
+                } else {
+                    toast.info("Signal Invalidated. New thesis being generated...", { id: toastId });
+                }
                 setData(result);
             }
         } catch (e) {
             console.error("Analysis error:", e);
+            toast.error("Forensic engine synchronization failed.", { id: toastId });
         } finally {
             setLoading(false);
         }
@@ -140,17 +167,18 @@ export default function SMCMasterclassPage() {
         const fetchInitial = async () => {
             setLoading(true);
             try {
-                const res = await fetch(`/api/insights/forecast?symbol=${symbol}`);
+                const previousAnalysis = null; // Don't pass cached here to force fresh fetch on first load if needed
+                const res = await fetch(`/api/insights/forecast`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol, previousAnalysis, force: false })
+                });
                 if (res.ok) {
                     const result = await res.json();
                     if (result && result.smc_advanced) {
                         setData(result);
                         setLoading(false);
-                    } else {
-                        triggerNewAnalysis();
                     }
-                } else {
-                    triggerNewAnalysis();
                 }
             } catch (e) {
                 console.error("Fetch error:", e);
@@ -234,12 +262,21 @@ export default function SMCMasterclassPage() {
                 <header className="flex flex-col lg:flex-row lg:items-center justify-between border-b border-white/5 pb-8 gap-6">
                     <div className="flex items-center gap-5">
                         <div className="flex items-center gap-3">
-                            <Button variant="outline" onClick={() => router.back()} className="h-10 w-10 border-white/5 p-0 rounded-xl bg-card/40 backdrop-blur-3xl transition-transform hover:scale-105 active:scale-95">
-                                <ArrowLeft size={18} />
-                            </Button>
-                            <Button variant="outline" onClick={triggerNewAnalysis} className="h-10 w-10 border-white/5 p-0 rounded-xl bg-card/40 backdrop-blur-3xl transition-transform hover:scale-105 active:scale-95 group">
-                                <RefreshCw size={16} className={`${loading ? 'animate-spin' : 'group-active:animate-spin'}`} />
-                            </Button>
+                            <Tooltip text="Go Back">
+                                <Button variant="outline" onClick={() => router.back()} className="h-10 w-10 border-white/5 p-0 rounded-xl bg-card/40 backdrop-blur-3xl transition-transform hover:scale-105 active:scale-95">
+                                    <ArrowLeft size={18} />
+                                </Button>
+                            </Tooltip>
+                            <Tooltip text="Refresh Analysis (Validation)">
+                                <Button variant="outline" onClick={() => triggerNewAnalysis(false)} className="h-10 w-10 border-white/5 p-0 rounded-xl bg-card/40 backdrop-blur-3xl transition-transform hover:scale-105 active:scale-95 group">
+                                    <RefreshCw size={16} className={`${loading ? 'animate-spin' : 'group-active:animate-spin'}`} />
+                                </Button>
+                            </Tooltip>
+                            <Tooltip text="Force Sync (Regenerate)">
+                                <Button variant="outline" onClick={() => triggerNewAnalysis(true)} title="Force Sync" className="h-10 w-10 border-white/5 p-0 rounded-xl bg-primary/10 text-primary transition-transform hover:scale-105 active:scale-95 group">
+                                    <Zap size={16} />
+                                </Button>
+                            </Tooltip>
                         </div>
                         <div>
                             <div className="flex items-center gap-2 mb-0.5">
@@ -301,7 +338,7 @@ export default function SMCMasterclassPage() {
                     
                     {/* 15. Collapsible AI Analysis Panel */}
                     <div className="w-full">
-                        <AINarrativePanel strategy={bestStrategy} loading={loading} />
+                        <AINarrativePanel data={data} strategy={bestStrategy} symbol={symbol} loading={loading} />
                     </div>
 
 
@@ -343,42 +380,9 @@ export default function SMCMasterclassPage() {
                                 <div className="space-y-6">
                                     <h4 className="text-[11px] font-black uppercase tracking-[0.4em] text-muted-foreground italic">Matrix Conditions</h4>
                                     <div className="grid grid-cols-1 gap-3">
-                                        {viewMode === 'SMC' && (
-                                            <>
-                                                <ConditionItem label="SMC Structure Alignment" active={bestStrategy?.entryConditions?.htfBias} />
-                                                <ConditionItem label="External Liquidity Purge" active={bestStrategy?.entryConditions?.liqSweep} />
-                                                <ConditionItem label="Fair Value Convergence" active={bestStrategy?.entryConditions?.confluence} />
-                                                <ConditionItem label="Power of 3 (PO3) State" active={tfData.po3?.phase !== 'ACCUMULATION'} />
-                                                <ConditionItem label="Silver Bullet Kill Zone" active={bestStrategy?.entryConditions?.session} />
-                                            </>
-                                        )}
-                                        {viewMode === 'ICT' && (
-                                            <>
-                                                <ConditionItem label="Power of 3 (PO3) State" active={tfData.po3?.phase !== 'ACCUMULATION'} />
-                                                <ConditionItem label="Silver Bullet Window" active={bestStrategy?.entryConditions?.session} />
-                                                <ConditionItem label="Judas Swing Detected" active={bestStrategy?.entryConditions?.liqSweep} />
-                                                <ConditionItem label="Liquidity Run Maturity" active={bestStrategy?.entryConditions?.confluence} />
-                                                <ConditionItem label="Fair Value Convergence" active={bestStrategy?.entryConditions?.htfBias} />
-                                            </>
-                                        )}
-                                        {viewMode === 'ORB' && (
-                                            <>
-                                                <ConditionItem label="Opening Range Zone" active={bestStrategy?.entryConditions?.session} />
-                                                <ConditionItem label="Breakout Momentum" active={bestStrategy?.entryConditions?.volatility} />
-                                                <ConditionItem label="Volume Confirmation" active={bestStrategy?.entryConditions?.confluence} />
-                                                <ConditionItem label="Session Wrap Sync" active={bestStrategy?.entryConditions?.htfBias} />
-                                                <ConditionItem label="30M Range Validity" active={bestStrategy?.entryConditions?.liqSweep} />
-                                            </>
-                                        )}
-                                        {viewMode === 'CRT' && (
-                                            <>
-                                                <ConditionItem label="Range Compression" active={tfData.volatility?.isContraction} />
-                                                <ConditionItem label="Expansion Gap Shift" active={bestStrategy?.entryConditions?.volatility} />
-                                                <ConditionItem label="Manipulation Wick" active={bestStrategy?.entryConditions?.liqSweep} />
-                                                <ConditionItem label="Volatility Spike Sync" active={bestStrategy?.entryConditions?.confluence} />
-                                                <ConditionItem label="Accumulation Rejection" active={bestStrategy?.entryConditions?.htfBias} />
-                                            </>
-                                        )}
+                                        {(data?.methodologySignals?.[viewMode.toLowerCase() as keyof typeof data.methodologySignals] || [])?.map((sig: any, i: number) => (
+                                            <ConditionItem key={i} label={sig.label} active={sig.status === 'VALID'} />
+                                        ))}
                                     </div>
                                 </div>
                                 <div className="pt-8 border-t border-white/5 space-y-4">
@@ -559,7 +563,7 @@ export default function SMCMasterclassPage() {
                          <div className="flex items-center justify-between px-6 py-4 bg-white/[0.02] border border-white/5 rounded-full mb-6 text-[10px] font-black uppercase tracking-widest">
                             <span>HTF Alignment: <span className="text-primary">{tfData.trend}</span></span>
                             <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                            <span>Phase: <span className="text-primary">{tfData.po3?.phase || (tfData.volatility?.isExpansion ? 'EXPN' : 'CONTR')}</span></span>
+                            <span>Phase: <span className="text-primary">{tfData.volatility?.isExpansion ? 'Expansion' : 'Contraction'}</span></span>
                         </div>
                         <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2 scrollbar-hide">
                             {tfData.structure?.map((s, i) => (
@@ -619,11 +623,13 @@ export default function SMCMasterclassPage() {
                     </TechnicalSection>
 
                     <TechnicalSection title="Session Kill Zones" icon={Globe}>
-                        <div className="space-y-6">
-                            <SessionCard session={smc.sessions?.asian} color="indigo" />
-                            <SessionCard session={smc.sessions?.london} color="sky" />
-                            <SessionCard session={smc.sessions?.ny} color="amber" />
-                        </div>
+                        {viewMode !== 'SMC' && (
+                            <div className="space-y-6">
+                                <SessionCard session={smc.sessions?.asian} color="indigo" />
+                                <SessionCard session={smc.sessions?.london} color="sky" />
+                                <SessionCard session={smc.sessions?.ny} color="amber" />
+                            </div>
+                        )}
                         <div className="mt-10 p-8 bg-primary/5 border border-primary/20 rounded-[3rem] space-y-4 relative overflow-hidden group">
                             <Compass size={64} className="absolute -bottom-8 -right-8 text-primary/10 transition-transform group-hover:scale-125 duration-700" />
                             <h4 className="text-[11px] font-black uppercase tracking-[0.5em] text-primary italic">Global Intelligence</h4>
@@ -640,59 +646,61 @@ export default function SMCMasterclassPage() {
                         </div>
                     </TechnicalSection>
 
-                    <TechnicalSection title={getDynamicLabel('PD')} icon={Scale}>
-                        <div className="relative py-12 group">
-                            <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-[2px] bg-white/5 group-hover:bg-primary/20 transition-all rounded-full" />
-                            <div className="space-y-24 relative">
-                                <PD_Level label="Premium (Short)" price={tfData.premiumDiscount?.rangeHigh} color="rose" active={tfData.premiumDiscount?.currentZone === 'PREMIUM'} />
-                                <PD_Level label="Equilibrium" price={tfData.premiumDiscount?.equilibrium} color="muted" active={tfData.premiumDiscount?.currentZone === 'EQUILIBRIUM'} />
-                                <PD_Level label="Discount (Long)" price={tfData.premiumDiscount?.rangeLow} color="emerald" active={tfData.premiumDiscount?.currentZone === 'DISCOUNT'} />
+                    {viewMode !== 'SMC' && (
+                        <TechnicalSection title={getDynamicLabel('PD')} icon={Scale}>
+                            <div className="relative py-12 group">
+                                <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-[2px] bg-white/5 group-hover:bg-primary/20 transition-all rounded-full" />
+                                <div className="space-y-24 relative">
+                                    <PD_Level label="Premium (Short)" price={tfData.premiumDiscount?.rangeHigh} color="rose" active={tfData.premiumDiscount?.currentZone === 'PREMIUM'} />
+                                    <PD_Level label="Equilibrium" price={tfData.premiumDiscount?.equilibrium} color="muted" active={tfData.premiumDiscount?.currentZone === 'EQUILIBRIUM'} />
+                                    <PD_Level label="Discount (Long)" price={tfData.premiumDiscount?.rangeLow} color="emerald" active={tfData.premiumDiscount?.currentZone === 'DISCOUNT'} />
+                                </div>
+                                <motion.div 
+                                    className="absolute left-4 right-4 h-1.5 bg-foreground shadow-[0_0_30px_white/50] z-20 rounded-full" 
+                                    animate={{ 
+                                        top: tfData.premiumDiscount?.rangeHigh && data?.currentPrice ? 
+                                            `${Math.max(10, Math.min(90, ((tfData.premiumDiscount.rangeHigh - data.currentPrice) / (tfData.premiumDiscount.rangeHigh - tfData.premiumDiscount.rangeLow)) * 100))}%` 
+                                            : '50%'
+                                    }} 
+                                    transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                                >
+                                    <div className="absolute -right-16 -top-2 px-3 py-1 bg-foreground text-background text-[9px] font-black rounded-full whitespace-nowrap">
+                                        CURRENT
+                                    </div>
+                                </motion.div>
                             </div>
-                            <motion.div 
-                                className="absolute left-4 right-4 h-1.5 bg-foreground shadow-[0_0_30px_white/50] z-20 rounded-full" 
-                                animate={{ 
-                                    top: tfData.premiumDiscount?.rangeHigh && data?.currentPrice ? 
-                                        `${Math.max(10, Math.min(90, ((tfData.premiumDiscount.rangeHigh - data.currentPrice) / (tfData.premiumDiscount.rangeHigh - tfData.premiumDiscount.rangeLow)) * 100))}%` 
-                                        : '50%'
-                                }} 
-                                transition={{ type: "spring", stiffness: 100, damping: 20 }}
-                            >
-                                <div className="absolute -right-16 -top-2 px-3 py-1 bg-foreground text-background text-[9px] font-black rounded-full whitespace-nowrap">
-                                    CURRENT
-                                </div>
-                            </motion.div>
-                        </div>
-                        
-                        {/* 14. AI Trade Engine (Auto Entry / SL / TP) */}
-                        <div className="mt-8 pt-8 border-t border-white/5 space-y-4"> 
-                            <div className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground mb-4 italic">Trade Management</div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="p-4 bg-white/5 rounded-xl border border-white/5">
-                                    <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-1">Entry Price</div>
-                                    <div className="text-sm font-bold font-mono text-primary">{fmt(smc.tradingPlan.entryPrice)}</div>
-                                </div>
-                                <div className="p-4 bg-white/5 rounded-xl border border-white/5">
-                                    <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-1">Stop Loss</div>
-                                    <div className="text-sm font-bold font-mono text-rose-500">{fmt(smc.tradingPlan.stopLoss)}</div>
-                                </div>
-                                <div className="p-4 bg-white/5 rounded-xl border border-white/5">
-                                    <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-1">TP 1</div>
-                                    <div className="text-sm font-bold font-mono text-emerald-500">{fmt(smc.tradingPlan.tp1)}</div>
-                                </div>
-                                <div className="p-4 bg-white/5 rounded-xl border border-white/5">
-                                    <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-1">TP 2</div>
-                                    <div className="text-sm font-bold font-mono text-emerald-500">{fmt(smc.tradingPlan.tp2)}</div>
+                            
+                            {/* 14. AI Trade Engine (Auto Entry / SL / TP) */}
+                            <div className="mt-8 pt-8 border-t border-white/5 space-y-4"> 
+                                <div className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground mb-4 italic">Trade Management</div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-4 bg-white/5 rounded-xl border border-white/5">
+                                        <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-1">Entry Price</div>
+                                        <div className="text-sm font-bold font-mono text-primary">{fmt(smc.tradingPlan.entryPrice)}</div>
+                                    </div>
+                                    <div className="p-4 bg-white/5 rounded-xl border border-white/5">
+                                        <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-1">Stop Loss</div>
+                                        <div className="text-sm font-bold font-mono text-rose-500">{fmt(smc.tradingPlan.stopLoss)}</div>
+                                    </div>
+                                    <div className="p-4 bg-white/5 rounded-xl border border-white/5">
+                                        <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-1">TP 1</div>
+                                        <div className="text-sm font-bold font-mono text-emerald-500">{fmt(smc.tradingPlan.tp1)}</div>
+                                    </div>
+                                    <div className="p-4 bg-white/5 rounded-xl border border-white/5">
+                                        <div className="text-[8px] uppercase tracking-widest text-muted-foreground mb-1">TP 2</div>
+                                        <div className="text-sm font-bold font-mono text-emerald-500">{fmt(smc.tradingPlan.tp2)}</div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="mt-8 p-6 bg-white/[0.02] border border-white/5 rounded-[2.5rem] text-center">
-                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] italic leading-relaxed">
-                                Neural engine enforces: <br/> 
-                                <span className="text-primary">{tfData.premiumDiscount?.currentZone === 'DISCOUNT' ? 'Long Bias Confirmed in Discount' : tfData.premiumDiscount?.currentZone === 'PREMIUM' ? 'Short Bias Confirmed in Premium' : 'Equilibrium Phase - Wait for Displacement'}</span>
-                            </span>
-                        </div>
-                    </TechnicalSection>
+                            <div className="mt-8 p-6 bg-white/[0.02] border border-white/5 rounded-[2.5rem] text-center">
+                                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em] italic leading-relaxed">
+                                    Neural engine enforces: <br/> 
+                                    <span className="text-primary">{tfData.premiumDiscount?.currentZone === 'DISCOUNT' ? 'Long Bias Confirmed in Discount' : tfData.premiumDiscount?.currentZone === 'PREMIUM' ? 'Short Bias Confirmed in Premium' : 'Equilibrium Phase - Wait for Displacement'}</span>
+                                </span>
+                            </div>
+                        </TechnicalSection>
+                    )}
                 </div>
 
                 </div>
@@ -710,6 +718,28 @@ export default function SMCMasterclassPage() {
 }
 
 // ===== NEW COMPONENTS =====
+
+function Tooltip({ children, text }: { children: React.ReactNode, text: string }) {
+    const [isHovered, setIsHovered] = useState(false);
+    return (
+        <div className="relative" onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
+            {children}
+            <AnimatePresence>
+                {isHovered && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 5, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 5, scale: 0.95 }}
+                        className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-foreground text-background text-[9px] font-black uppercase tracking-widest rounded-lg whitespace-nowrap z-[100] pointer-events-none shadow-2xl border border-white/10"
+                    >
+                        {text}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-foreground" />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
 
 function InstitutionalCard({ title, icon: Icon, children, className = "" }: any) {
     return (
@@ -825,8 +855,69 @@ function TechnicalSection({ title, icon: Icon, count, children }: any) {
     );
 }
 
-function AINarrativePanel({ strategy, loading }: { strategy: StrategySetup | undefined; loading: boolean }) {
-    const [isOpen, setIsOpen] = useState(true);
+function AINarrativePanel({ data, strategy, symbol, loading }: { data: AnalysisResult; strategy: StrategySetup | undefined; symbol: string; loading: boolean }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [narrative, setNarrative] = useState<string>('');
+    const [generating, setGenerating] = useState(false);
+
+    useEffect(() => {
+        if (strategy?.explanation?.narrative && strategy.explanation.narrative.length > 0) {
+            setNarrative(strategy.explanation.narrative);
+        } else if (strategy) {
+            generateNarrative();
+        }
+    }, [strategy]);
+
+    const generateNarrative = async () => {
+        if (!strategy || !data) return;
+        setGenerating(true);
+        try {
+            const mainTf = data.smc_advanced.timeframes.find(tf => tf.timeframe === '15M') || data.smc_advanced.timeframes[0];
+            
+            const context = {
+                symbol,
+                currentPrice: data.currentPrice,
+                methodology: strategy.methodology,
+                bias: strategy.setup,
+                timeframeContext: "4H Bias | 15M Structure | 1/5M Execution",
+                orderBlockHigh: mainTf.orderBlocks?.[0]?.top,
+                orderBlockLow: mainTf.orderBlocks?.[0]?.bottom,
+                fvgHigh: mainTf.fairValueGaps?.[0]?.top,
+                fvgLow: mainTf.fairValueGaps?.[0]?.bottom,
+                entryPrice: strategy.entry,
+                stopLoss: strategy.sl,
+                tp1: strategy.tp1,
+                tp2: strategy.tp2,
+                confluenceScore: strategy.confidence,
+                htfTrend: data.smc_advanced.overallBias,
+                ltfTrend: mainTf.trend,
+                methodologyConfluences: data.methodologySignals ? {
+                    SMC: data.methodologySignals.smc.map((s: any) => `${s.label}: ${s.status}`).join(', '),
+                    ICT: data.methodologySignals.ict.map((s: any) => `${s.label}: ${s.status}`).join(', '),
+                    ORB: data.methodologySignals.orb.map((s: any) => `${s.label}: ${s.status}`).join(', '),
+                    CRT: data.methodologySignals.crt.map((s: any) => `${s.label}: ${s.status}`).join(', ')
+                } : undefined
+            };
+
+            const res = await fetch('/api/ai-narrative', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(context)
+            });
+
+            if (res.ok) {
+                const json = await res.json();
+                setNarrative(json.narrative);
+            } else {
+                setNarrative("### FORENSIC LINK INTERRUPT\n\nThe neural engine encountered an anomaly while decrypting market delivery logic.");
+            }
+        } catch (e) {
+            console.error("Narrative generation failed", e);
+            setNarrative("### NEURAL SYNC FAILURE\n\nConnection to the institutional core timed out.");
+        } finally {
+            setGenerating(false);
+        }
+    };
 
     if (loading || !strategy) return null;
 
@@ -847,8 +938,20 @@ function AINarrativePanel({ strategy, loading }: { strategy: StrategySetup | und
                         </div>
                     </div>
                 </div>
-                <div className={`p-3 rounded-full border border-white/5 bg-white/5 transition-all duration-500 ${isOpen ? 'rotate-180 bg-primary/20 border-primary/30' : ''}`}>
-                    <ArrowLeft size={16} className="-rotate-90 text-primary/50" />
+                <div className="flex items-center gap-4">
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        disabled={generating}
+                        onClick={(e) => { e.stopPropagation(); generateNarrative(); }}
+                        className="h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-[10px] font-black uppercase tracking-widest italic flex items-center gap-3 px-6 shadow-xl"
+                    >
+                        {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} className="text-primary" />}
+                        {generating ? 'Transmitting...' : 'Decrypt Logic'}
+                    </Button>
+                    <div className={`p-3 rounded-full border border-white/5 bg-white/5 transition-all duration-500 ${isOpen ? 'rotate-180 bg-primary/20 border-primary/30' : ''}`}>
+                        <ChevronDown size={16} className="text-primary/50" />
+                    </div>
                 </div>
             </div>
 
@@ -868,11 +971,31 @@ function AINarrativePanel({ strategy, loading }: { strategy: StrategySetup | und
                                     <div className="text-[10px] font-black text-primary uppercase tracking-[0.5em] flex items-center gap-3">
                                         <Globe size={12} className="text-primary/60" /> Market Context & Institutional Narrative
                                     </div>
-                                    <p className="text-xl font-medium text-foreground/90 leading-relaxed italic border-l-[3px] border-primary/40 pl-8 py-2 relative">
-                                        <span className="absolute left-0 top-0 text-6xl text-primary/10 select-none">"</span>
-                                        {strategy.explanation?.narrative || 'Aggregating order flow data and structural shifts for synthesis...'}
-                                        <span className="absolute bottom-0 right-0 text-6xl text-primary/10 select-none">"</span>
-                                    </p>
+                                    <div className="text-base font-medium text-foreground/80 leading-relaxed italic border-l-[3px] border-primary/40 pl-8 py-2 relative markdown-narrative">
+                                        {generating ? (
+                                            <div className="space-y-3">
+                                                <div className="h-4 bg-primary/10 rounded animate-pulse w-full" />
+                                                <div className="h-4 bg-primary/10 rounded animate-pulse w-5/6" />
+                                                <div className="h-4 bg-primary/10 rounded animate-pulse w-4/6" />
+                                            </div>
+                                        ) : (
+                                            <ReactMarkdown
+                                                components={{
+                                                    h1: ({node, ...props}) => <h1 className="text-xl font-black italic uppercase tracking-widest text-white mb-4 mt-6 first:mt-0" {...props} />,
+                                                    h2: ({node, ...props}) => <h2 className="text-lg font-black italic uppercase tracking-wider text-primary mb-3 mt-8" {...props} />,
+                                                    h3: ({node, ...props}) => <h3 className="text-md font-black italic uppercase tracking-wide text-white/90 mb-2 mt-6" {...props} />,
+                                                    p: ({node, ...props}) => <p className="mb-4 last:mb-0" {...props} />,
+                                                    strong: ({node, ...props}) => <strong className="text-primary/90 font-black not-italic" {...props} />,
+                                                    ul: ({node, ...props}) => <ul className="space-y-2 mb-4 list-none" {...props} />,
+                                                    li: ({node, ...props}) => (
+                                                        <li className="flex items-start gap-2 before:content-['//'] before:text-primary/40 before:font-mono before:text-[10px] before:mt-1" {...props} />
+                                                    ),
+                                                }}
+                                            >
+                                                {narrative || 'Awaiting forensic synthesis...'}
+                                            </ReactMarkdown>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="space-y-4">
                                     <div className="text-[10px] font-black text-primary/60 uppercase tracking-[0.5em] flex items-center gap-3">

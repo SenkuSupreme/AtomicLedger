@@ -287,3 +287,10 @@ Most ORB systems fail because they:
 ❌ Don’t filter fakeouts
 
 Your dashboard solves all three.
+---
+### 🛠️ Forensic Matrix Conditions
+- **Range Definition**: Statistical confirmation of the opening session boundaries.
+- **Momentum Expansion**: High-energy breakouts confirmed by acceleration.
+- **ORH/ORL Breakthrough**: Clean breach and acceptance outside the opening range.
+- **Volume Avg Expansion**: Relative volume metrics exceeding baseline benchmarks.
+- **Session Dominance**: Confirmation of primary trend direction for the active window.

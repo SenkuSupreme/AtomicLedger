@@ -2,14 +2,48 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { ArrowLeft, RefreshCw, Loader2, Sparkles, Activity, Target, BrainCircuit, BarChart2, Globe, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+    ArrowLeft, RefreshCw, Loader2, Sparkles, Activity, Target, BrainCircuit, 
+    BarChart2, Globe, ChevronRight, ChevronDown, Zap, AlertCircle 
+} from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import ReactMarkdown from 'react-markdown';
 
 interface Signal {
     label: string;
     status: 'VALID' | 'INVALID' | 'PENDING';
+}
+
+interface StrategySetup {
+    id: string;
+    timestamp: string;
+    name: string;
+    methodology: 'SMC' | 'ICT' | 'ORB' | 'CRT';
+    setup: string;
+    logic: string;
+    confidence: number;
+    entry: number;
+    sl: number;
+    tp1: number;
+    tp2: number;
+    explanation: {
+        why: string;
+        target: string;
+        invalidation: string;
+        controlTf: string;
+        narrative: string;
+    };
+}
+
+interface TimeframeSMC {
+    timeframe: string;
+    label: string;
+    orderBlocks: any[];
+    fairValueGaps: any[];
+    trend: string;
 }
 
 interface AnalysisResult {
@@ -18,11 +52,22 @@ interface AnalysisResult {
     trend: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
     probability: number;
     signals: Signal[];
+    methodologySignals: {
+        smc: Signal[];
+        ict: Signal[];
+        orb: Signal[];
+        crt: Signal[];
+    };
     concepts: {
       smc: string[];
       ict: string[];
       orb: string[];
       crt: string[];
+    };
+    smc_advanced: {
+        strategies: StrategySetup[];
+        timeframes: TimeframeSMC[];
+        overallBias: string;
     };
     analyzedAt: string;
 }
@@ -36,11 +81,16 @@ export default function DetailedInsightPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAnalysis = async () => {
+  const fetchAnalysis = async (force: boolean = false) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/insights/forecast?symbol=${symbol}`);
+      // Prioritize Database Sync over local persistence
+      const res = await fetch(`/api/insights/forecast`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol, force })
+      });
       if (!res.ok) {
         if (res.status === 503) throw new Error("API Rate Limit. Please wait a moment.");
         throw new Error("Failed to fetch analysis.");
@@ -49,6 +99,7 @@ export default function DetailedInsightPage() {
       setData(json);
     } catch (e: any) {
       setError(e.message);
+      toast.error(e.message || "Institutional link failure.");
     } finally {
       setLoading(false);
     }
@@ -64,7 +115,6 @@ export default function DetailedInsightPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white p-8 relative overflow-hidden">
-         {/* High-Fidelity Background Architecture */}
          <div className="fixed inset-0 pointer-events-none -z-10 bg-[#050505]">
              <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
              <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px]" />
@@ -72,7 +122,6 @@ export default function DetailedInsightPage() {
          </div>
 
         <div className="max-w-7xl mx-auto relative z-10 space-y-8">
-            {/* HUD Header */}
             <div className="flex flex-col md:flex-row md:items-end gap-6 pb-8 border-b border-white/5 mb-8">
                 <div className="flex items-center gap-6">
                     <div className="relative group">
@@ -92,38 +141,41 @@ export default function DetailedInsightPage() {
                     </div>
                 </div>
                 
-                <div className="md:ml-auto flex items-center gap-8">
-                    <div className="hidden lg:flex flex-col items-end">
-                        <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em] mb-1 italic">Neural Engine Rank 4.2</span>
-                        <div className="flex gap-1">
-                            {[1,2,3,4,5].map(i => <div key={i} className={`w-3 h-1 rounded-full ${i <= 4 ? 'bg-primary' : 'bg-white/10'}`} />)}
-                        </div>
-                    </div>
-                    <Button 
-                        onClick={fetchAnalysis}
-                        disabled={loading}
-                        className="h-14 bg-primary text-primary-foreground px-8 rounded-xl font-black uppercase tracking-widest gap-3 shadow-[0_0_30px_rgba(var(--primary),0.3)] hover:scale-105 transition-all text-[11px]"
-                    >
-                        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-                        Sync Forecast
-                    </Button>
+                <div className="md:ml-auto flex items-center gap-4">
+                    <Tooltip text="Validate Signal Thesis">
+                        <Button 
+                            onClick={() => fetchAnalysis(false)}
+                            disabled={loading}
+                            className="h-14 bg-white/5 border border-white/10 text-white/50 px-8 rounded-xl font-black uppercase tracking-widest gap-3 hover:bg-white/10 transition-all text-[11px]"
+                        >
+                            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                            {loading ? 'Validating...' : 'Refresh'}
+                        </Button>
+                    </Tooltip>
+                    <Tooltip text="Force New Analysis">
+                        <Button 
+                            onClick={() => fetchAnalysis(true)}
+                            disabled={loading}
+                            className="h-14 bg-primary text-primary-foreground px-8 rounded-xl font-black uppercase tracking-widest gap-3 shadow-[0_0_30px_rgba(var(--primary),0.3)] hover:scale-105 transition-all text-[11px]"
+                        >
+                            <Zap size={18} />
+                            Force Sync
+                        </Button>
+                    </Tooltip>
                 </div>
             </div>
 
             {loading ? (
                 <div className="h-[60vh] flex flex-col items-center justify-center">
-                    <Loader2 size={64} className="text-indigo-400 animate-spin mb-4" />
-                    <h2 className="text-2xl font-bold text-white/60">Forecasting Price Action...</h2>
-                    <p className="text-white/30 mt-2 font-mono text-sm max-w-md text-center">
-                        Synthesizing Smart Money Concepts, ICT patterns, and Volatility models.
-                    </p>
+                    <Loader2 size={64} className="text-primary animate-spin mb-4" />
+                    <h2 className="text-2xl font-bold text-white/60 uppercase tracking-tighter italic">Forecasting Price Action...</h2>
                 </div>
             ) : error ? (
                 <div className="h-[50vh] flex flex-col items-center justify-center text-center">
                     <AlertCircle size={64} className="text-rose-400 mb-4" />
-                    <h2 className="text-2xl font-bold text-white">Analysis Failed</h2>
+                    <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Analysis Failed</h2>
                     <p className="text-white/40 mt-2 mb-6">{error}</p>
-                    <Button onClick={fetchAnalysis}>Try Again</Button>
+                    <Button onClick={() => fetchAnalysis(true)}>Try Again</Button>
                 </div>
             ) : data ? (
                 <motion.div 
@@ -131,11 +183,8 @@ export default function DetailedInsightPage() {
                     animate={{ opacity: 1, scale: 1 }}
                     className="space-y-12"
                 >
-                    {/* SYSTEM DIAGNOSTICS & SCORE */}
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-                        {/* 1. Radar Score Hub */}
                         <div className="lg:col-span-4 bg-[#0A0A0A] border border-white/10 rounded-[2.5rem] p-12 flex flex-col items-center text-center relative overflow-hidden group">
-                           {/* Decorative HUD Elements */}
                            <div className="absolute top-6 left-6 w-12 h-[2px] bg-white/10" />
                            <div className="absolute top-6 left-6 w-[2px] h-12 bg-white/10" />
                            <div className="absolute bottom-6 right-6 w-12 h-[2px] bg-white/10" />
@@ -144,10 +193,7 @@ export default function DetailedInsightPage() {
                             <h3 className="text-[11px] font-black text-white/30 uppercase tracking-[0.5em] mb-12 italic">Precision Matrix Conv.</h3>
                             
                             <div className="relative mb-12 flex items-center justify-center">
-                                {/* Probability Ring */}
                                 <div className="absolute w-[240px] h-[240px] border border-white/5 rounded-full" />
-                                <div className="absolute w-[200px] h-[200px] border border-white/5 rounded-full" />
-                                <div className="absolute w-[160px] h-[160px] border border-white/5 rounded-full" />
                                 <motion.div 
                                     className="absolute w-full h-full"
                                     animate={{ rotate: 360 }}
@@ -188,22 +234,10 @@ export default function DetailedInsightPage() {
                                         </div>
                                     )}
                                 </div>
-                                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                                     <motion.div 
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${data?.probability}%` }}
-                                        className={`h-full ${
-                                            data?.trend === 'BULLISH' ? 'bg-emerald-500' : 
-                                            data?.trend === 'BEARISH' ? 'bg-rose-500' : 
-                                            'bg-amber-500'
-                                        }`}
-                                    />
-                                </div>
                             </div>
                         </div>
 
-                        {/* 2. Neural Diagnostics (Signals) */}
-                         <div className="lg:col-span-8 space-y-8">
+                        <div className="lg:col-span-8 space-y-8">
                             <div className="bg-[#0A0A0A] border border-white/10 rounded-[2.5rem] p-10 h-full">
                                 <div className="flex items-center justify-between mb-10">
                                     <div className="flex items-center gap-4">
@@ -212,27 +246,17 @@ export default function DetailedInsightPage() {
                                         </div>
                                         <h4 className="text-[13px] font-black italic text-white/70 uppercase tracking-[0.5em]">Neural Signal Diagnostics</h4>
                                     </div>
-                                    <div className="flex gap-1">
-                                        {[1,2,3,4,5,6,7,8].map(i => <div key={i} className="w-1.5 h-6 bg-white/5 rounded-full" />)}
-                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {data?.signals?.map((sig, i) => (
+                                    {(data?.methodologySignals?.[(data?.smc_advanced?.strategies?.[0]?.methodology?.toLowerCase() || 'smc') as keyof typeof data.methodologySignals])?.map((sig, i) => (
                                         <div key={i} className="group flex items-center justify-between p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-all relative overflow-hidden">
-                                            <div className={`absolute left-0 top-0 bottom-0 w-1 transition-all ${
+                                            <div className={`absolute left-0 top-0 bottom-0 w-1 ${
                                                 sig.status === 'VALID' ? 'bg-emerald-500' : 
                                                 sig.status === 'INVALID' ? 'bg-rose-500' : 
                                                 'bg-amber-500'
                                             }`} />
-                                            <div className="flex items-center gap-5">
-                                                <div className={`w-2 h-2 rounded-full animate-pulse ${
-                                                    sig.status === 'VALID' ? 'bg-emerald-500' : 
-                                                    sig.status === 'INVALID' ? 'bg-rose-500' : 
-                                                    'bg-amber-500'
-                                                }`} />
-                                                <span className="text-xs font-black uppercase text-white/80 tracking-widest italic">{sig.label}</span>
-                                            </div>
+                                            <span className="text-xs font-black uppercase text-white/80 tracking-widest italic">{sig.label}</span>
                                             <div className={`text-[9px] font-black uppercase italic ${
                                                 sig.status === 'VALID' ? 'text-emerald-500/60' : 
                                                 sig.status === 'INVALID' ? 'text-rose-500/60' : 
@@ -242,99 +266,33 @@ export default function DetailedInsightPage() {
                                             </div>
                                         </div>
                                     ))}
-                                    {/* Default systemic fills if signals are few */}
-                                    {(!data?.signals || data.signals.length < 4) && (
-                                         <div className="flex items-center justify-between p-6 rounded-2xl bg-white/[0.01] border border-white/5 opacity-50 italic">
-                                            <span className="text-xs font-bold text-white/20 uppercase tracking-widest italic">Scanning structural anomalies...</span>
-                                            <div className="w-8 h-[1px] bg-white/10" />
-                                         </div>
-                                    )}
-                                </div>
-
-                                <div className="mt-10 pt-10 border-t border-white/5 grid grid-cols-2 md:grid-cols-4 gap-8">
-                                    <DiagnosticStat label="Cores Active" value="08" />
-                                    <DiagnosticStat label="Sync Latency" value="1.2ms" />
-                                    <DiagnosticStat label="Matrix Load" value="14%" />
-                                    <DiagnosticStat label="Buffer" value="OK" />
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* THE MASTER MATRIX GRID */}
                     <div className="space-y-8">
                         <div className="flex items-center gap-4 px-2">
                              <h2 className="text-[11px] font-black uppercase tracking-[0.6em] text-white/20 italic">Integrated Methodology Protocol</h2>
                              <div className="h-[1px] flex-grow bg-white/5" />
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            <Link href={`/analytics/insights/${symbol}/smc`} className="h-full">
-                                <ConceptCard 
-                                    title="SMC" 
-                                    subtitle="Structural Flow"
-                                    items={data?.concepts?.smc?.length > 0 ? data.concepts.smc : ['HH/LL Structural Sync', 'OB Validation', 'FVG Alignment']} 
-                                    icon={BrainCircuit}
-                                    color="indigo"
-                                    score={data?.probability}
-                                />
-                            </Link>
-                            <Link href={`/analytics/insights/${symbol}/ict`} className="h-full">
-                                <ConceptCard 
-                                    title="ICT" 
-                                    subtitle="Precision Matrix"
-                                    items={data?.concepts?.ict?.length > 0 ? data.concepts.ict : ['Po3 Accumulation', 'Silver Bullet 2.0', 'Judas Swing Detected']} 
-                                    icon={Target}
-                                    color="purple" 
-                                    score={Math.min(99, (data?.probability || 80) + 5)}
-                                />
-                            </Link>
-                            <Link href={`/analytics/insights/${symbol}/orb`} className="h-full">
-                                <ConceptCard 
-                                    title="ORB" 
-                                    subtitle="Session Momentum"
-                                    items={data?.concepts?.orb?.length > 0 ? data.concepts.orb : ['AM Range High', 'PM Compression', 'Session Sweep Sync']} 
-                                    icon={Activity}
-                                    color="sky" 
-                                    score={Math.max(10, (data?.probability || 80) - 10)}
-                                />
-                            </Link>
-                            <Link href={`/analytics/insights/${symbol}/crt`} className="h-full">
-                                <ConceptCard 
-                                    title="CRT" 
-                                    subtitle="Expand Logic"
-                                    items={data?.concepts?.crt?.length > 0 ? data.concepts.crt : ['CRT Initial Balance', 'Expansion Trigger', 'Volatility Squeeze']} 
-                                    icon={BarChart2}
-                                    color="pink" 
-                                    score={Math.min(95, (data?.probability || 80) + 2)}
-                                />
-                            </Link>
-                            <div className="h-full opacity-60">
-                                <ConceptCard 
-                                    title="MACRO" 
-                                    subtitle="Fundamental Sync"
-                                    items={['USD DXY Correlation', 'Macro Risk Env', 'Yield Delta Scan']} 
-                                    icon={Globe}
-                                    color="amber" 
-                                    score={82}
-                                />
-                            </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                            {['SMC', 'ICT', 'ORB', 'CRT'].map((method) => (
+                                <Link key={method} href={`/analytics/insights/${symbol}/${method.toLowerCase()}`} className="h-full">
+                                    <ConceptCard 
+                                        title={method} 
+                                        subtitle={`${method} Core`}
+                                        items={data?.methodologySignals?.[method.toLowerCase() as keyof typeof data.methodologySignals] || []} 
+                                        icon={method === 'SMC' ? BrainCircuit : method === 'ICT' ? Target : method === 'ORB' ? Activity : BarChart2}
+                                        color={method === 'SMC' ? 'indigo' : method === 'ICT' ? 'purple' : method === 'ORB' ? 'sky' : 'pink'}
+                                        score={data?.probability}
+                                    />
+                                </Link>
+                            ))}
                         </div>
                     </div>
 
-                    {/* SYNTHESIS MEMO */}
-                    <div className="bg-[#0A0A0A] rounded-[2.5rem] p-10 border border-white/10 relative overflow-hidden group">
-                         <div className="absolute top-0 right-0 p-8 text-primary/10 group-hover:text-primary/20 transition-colors">
-                            <BrainCircuit size={120} />
-                         </div>
-                        <h3 className="text-[12px] font-black italic uppercase tracking-[0.5em] text-primary mb-6">Algorithm Synthesis Memo</h3>
-                        <p className="text-white/40 text-sm leading-[1.8] font-medium italic max-w-5xl border-l border-primary/20 pl-8">
-                            Neural analysis of <span className="text-white font-black">{symbol}</span> validates an institutional framework favoring 
-                            <span className={`font-black mx-2 uppercase italic ${data?.trend === 'BULLISH' ? 'text-emerald-400' : 'text-rose-400'}`}>{data?.trend}</span> 
-                            positioning. Confluence of {data?.signals?.length || 0} high-probability variables suggests system maturity. 
-                            {(data?.probability || 0) > 75 ? " Model integrity indicates immediate execution phase." : " Model awaiting secondary liquidation sweep before final trigger."}
-                             Cross-methodology alignment [SMC/ICT/CRT] confirms macro-directional stability.
-                        </p>
-                    </div>
+                    <NeuralNarrative data={data} symbol={symbol} />
                 </motion.div>
             ) : null}
         </div>
@@ -353,9 +311,6 @@ function ConceptCard({ title, subtitle, items, icon: Icon, color, score }: any) 
 
     return (
         <div className="group relative bg-[#0A0A0A] border border-white/5 rounded-[2rem] p-10 hover:border-primary/30 transition-all duration-500 flex flex-col h-full overflow-hidden">
-            {/* Active module background glow */}
-            <div className={`absolute -top-24 -right-24 w-48 h-48 rounded-full blur-[80px] opacity-0 group-hover:opacity-10 transition-opacity duration-700 ${color === 'amber' ? 'bg-amber-500' : 'bg-primary'}`} />
-            
             <div className="flex items-center justify-between mb-10 relative z-10">
                  <div className="flex items-center gap-4">
                     <div className={`p-4 rounded-2xl border border-white/5 bg-white/[0.02] group-hover:scale-110 transition-transform ${iconColors[color]}`}>
@@ -366,30 +321,18 @@ function ConceptCard({ title, subtitle, items, icon: Icon, color, score }: any) 
                         <span className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em] italic">{subtitle}</span>
                     </div>
                  </div>
-                 <div className="text-right">
-                    <div className="text-base font-black italic text-primary/80 tracking-tighter">{score}%</div>
-                    <div className="text-[8px] font-black uppercase text-white/10 tracking-[0.2em] italic">Neural Sync</div>
-                 </div>
             </div>
-            
-            <div className="space-y-5 flex-grow relative z-10">
-                {items.slice(0, 3).map((item: string, i: number) => (
-                    <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-white/[0.01] border border-white/[0.03] group-hover:bg-white/[0.03] transition-all">
-                        <div className="flex items-center gap-3 truncate">
-                            <div className="w-1.5 h-1.5 rounded-full bg-primary/20 shrink-0" />
-                            <span className="text-[11px] font-bold text-white/40 uppercase tracking-tight truncate italic group-hover:text-white/70 transition-colors">{item}</span>
-                        </div>
-                        <div className="text-[8px] font-black text-emerald-500/0 group-hover:text-emerald-500/40 transition-all italic">Verified</div>
+            <div className="space-y-4 flex-grow relative z-10">
+                {items.slice(0, 4).map((sig: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.01] border border-white/[0.03] transition-all">
+                        <span className="text-[10px] font-bold text-white/40 uppercase truncate italic">{sig.label}</span>
+                        <span className={`text-[8px] font-black uppercase italic ${
+                            sig.status === 'VALID' ? 'text-emerald-500/60' : 'text-rose-500/60'
+                        }`}>
+                            {sig.status}
+                        </span>
                     </div>
                 ))}
-            </div>
-
-            <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between relative z-10">
-                <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.4em] italic leading-none group-hover:text-primary/40 transition-colors">Launch Module</span>
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40 opacity-0 group-hover:opacity-100 animate-pulse" />
-                </div>
-                <ChevronRight size={14} className="text-white/20 group-hover:translate-x-1 group-hover:text-primary transition-all" />
             </div>
         </div>
     );
@@ -404,23 +347,160 @@ function DiagnosticStat({ label, value }: { label: string, value: string }) {
     );
 }
 
-function AlertCircle({ size, className }: any) {
+function NeuralNarrative({ data, symbol }: { data: AnalysisResult, symbol: string }) {
+    const [narrative, setNarrative] = useState<string>('');
+    const [generating, setGenerating] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
+
+    useEffect(() => {
+        const currentNarrative = data?.smc_advanced?.strategies?.[0]?.explanation?.narrative;
+        if (currentNarrative && currentNarrative.length > 0) {
+            setNarrative(currentNarrative);
+        } else {
+            generateNarrative();
+        }
+    }, [data]);
+
+    const generateNarrative = async () => {
+        setGenerating(true);
+        try {
+            const bestStrategy = data.smc_advanced.strategies[0];
+            const mainTf = data.smc_advanced.timeframes.find(tf => tf.timeframe === '15M') || data.smc_advanced.timeframes[0];
+            
+            const context = {
+                symbol,
+                currentPrice: data.currentPrice,
+                methodology: bestStrategy.methodology,
+                bias: bestStrategy.setup,
+                timeframeContext: "4H Bias | 15M Structure | 1/5M Execution",
+                entryPrice: bestStrategy.entry,
+                stopLoss: bestStrategy.sl,
+                tp1: bestStrategy.tp1,
+                tp2: bestStrategy.tp2,
+                confluenceScore: bestStrategy.confidence,
+                htfTrend: data.trend,
+                ltfTrend: mainTf.trend,
+                methodologyConfluences: {
+                    SMC: data.methodologySignals.smc.map(s => `${s.label}: ${s.status}`).join(', '),
+                    ICT: data.methodologySignals.ict.map(s => `${s.label}: ${s.status}`).join(', '),
+                    ORB: data.methodologySignals.orb.map(s => `${s.label}: ${s.status}`).join(', '),
+                    CRT: data.methodologySignals.crt.map(s => `${s.label}: ${s.status}`).join(', ')
+                }
+            };
+
+            const res = await fetch('/api/ai-narrative', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(context)
+            });
+
+            if (res.ok) {
+                const json = await res.json();
+                setNarrative(json.narrative);
+            } else {
+                setNarrative("### FORENSIC LINK INTERRUPT\n\nThe neural engine encountered an anomaly while decrypting market delivery logic.");
+            }
+        } catch (e) {
+            console.error("Narrative generation failed", e);
+            setNarrative("### NEURAL SYNC FAILURE\n\nConnection to the institutional core timed out.");
+        } finally {
+            setGenerating(false);
+        }
+    };
+
     return (
-        <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            width={size} 
-            height={size} 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            className={className}
-        >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-        </svg>
+        <div className="bg-[#0A0A0A] rounded-[2.5rem] p-10 border border-white/10 relative overflow-hidden group min-h-[120px] flex flex-col justify-start">
+             <div className="absolute top-0 right-0 p-8 text-primary/10 group-hover:text-primary/20 transition-colors pointer-events-none">
+                <BrainCircuit size={160} />
+             </div>
+             
+             <div 
+                className="flex items-center justify-between cursor-pointer relative z-10"
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <div className="flex items-center gap-6">
+                    <div className="p-4 bg-primary/20 rounded-[1.5rem] shadow-lg shadow-primary/10 group-hover:scale-110 transition-transform duration-500">
+                        <BrainCircuit size={24} className="text-primary" />
+                    </div>
+                    <div>
+                        <h3 className="text-[12px] font-black uppercase tracking-[0.5em] text-primary italic mb-1">Neural Narrative Processor</h3>
+                        <div className="text-2xl font-black italic uppercase tracking-tighter text-foreground/90 leading-none">
+                            Institutional <span className="text-primary/40 text-lg">Logic Decryption</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex items-center gap-4">
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        disabled={generating}
+                        onClick={(e) => { e.stopPropagation(); generateNarrative(); }}
+                        className="h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-[10px] font-black uppercase tracking-widest italic flex items-center gap-3 px-6 shadow-xl"
+                    >
+                        {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} className="text-primary" />}
+                        {generating ? 'Transmitting...' : 'Decrypt Logic'}
+                    </Button>
+                    <div className={`p-3 rounded-full border border-white/5 bg-white/5 transition-all duration-500 ${isOpen ? 'rotate-180 bg-primary/20 border-primary/30' : ''}`}>
+                        <ChevronDown size={16} className="text-primary/50" />
+                    </div>
+                </div>
+            </div>
+
+            {isOpen && (
+                <div className="mt-8 border-t border-white/5 pt-10 relative z-10 w-full">
+                    {generating ? (
+                        <div className="space-y-4">
+                            <div className="h-4 bg-white/5 rounded-full animate-pulse w-full" />
+                            <div className="h-4 bg-white/5 rounded-full animate-pulse w-5/6" />
+                            <div className="h-4 bg-white/5 rounded-full animate-pulse w-4/6" />
+                        </div>
+                    ) : (
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="text-white/60 text-base leading-[1.8] font-medium max-w-5xl border-l-2 border-primary/20 pl-8 markdown-narrative"
+                        >
+                            <ReactMarkdown
+                                components={{
+                                    h1: ({node, ...props}) => <h1 className="text-xl font-black italic uppercase tracking-widest text-white mb-4 mt-6 first:mt-0" {...props} />,
+                                    h2: ({node, ...props}) => <h2 className="text-lg font-black italic uppercase tracking-wider text-primary mb-3 mt-8" {...props} />,
+                                    h3: ({node, ...props}) => <h3 className="text-md font-black italic uppercase tracking-wide text-white/90 mb-2 mt-6" {...props} />,
+                                    p: ({node, ...props}) => <p className="mb-4 last:mb-0 italic" {...props} />,
+                                    strong: ({node, ...props}) => <strong className="text-primary/90 font-black not-italic" {...props} />,
+                                    ul: ({node, ...props}) => <ul className="space-y-2 mb-4 list-none" {...props} />,
+                                    li: ({node, ...props}) => (
+                                        <li className="flex items-start gap-2 before:content-['//'] before:text-primary/40 before:font-mono before:text-[10px] before:mt-1" {...props} />
+                                    ),
+                                }}
+                            >
+                                {narrative || 'Awaiting forensic synthesis...'}
+                            </ReactMarkdown>
+                        </motion.div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function Tooltip({ children, text }: { children: React.ReactNode, text: string }) {
+    const [isHovered, setIsHovered] = useState(false);
+    return (
+        <div className="relative" onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
+            {children}
+            <AnimatePresence>
+                {isHovered && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 5, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 5, scale: 0.95 }}
+                        className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-foreground text-background text-[9px] font-black uppercase tracking-widest rounded-lg whitespace-nowrap z-[100] pointer-events-none shadow-2xl border border-white/10"
+                    >
+                        {text}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-foreground" />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
     );
 }

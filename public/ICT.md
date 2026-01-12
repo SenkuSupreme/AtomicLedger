@@ -349,3 +349,10 @@ Model conflict detection
 Kill zone probability heatmap
 
 Auto backtest per model
+---
+### 🛠️ Forensic Matrix Conditions
+- **Kill Zone Window**: Strategy execution strictly within algorithmic time windows.
+- **Silver Bullet Active**: Validation of high-probability time-based liquidity delivery.
+- **PDH/PDL Liquidity**: Identification of previous daily highs/lows as external draws.
+- **Algo Displacement**: Measurement of price energy and institutional commitment.
+- **PO3 Manipulation**: Decryption of Accumulation, Manipulation, and Distribution.
