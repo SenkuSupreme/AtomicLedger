@@ -415,90 +415,81 @@ function NoteCard({
 }) {
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case "trading": return "text-blue-500 bg-blue-500/10 border-blue-500/20";
-      case "analysis": return "text-purple-500 bg-purple-500/10 border-purple-500/20";
-      case "strategy": return "text-green-500 bg-green-500/10 border-green-500/20";
-      case "journal": return "text-amber-500 bg-amber-500/10 border-amber-500/20";
-      default: return "text-gray-400 bg-white/5 border-white/10";
+      case "trading": return "text-blue-400 border-blue-500/30 shadow-[0_0_10px_rgba(59,130,246,0.1)] bg-blue-500/5";
+      case "analysis": return "text-purple-400 border-purple-500/30 shadow-[0_0_10px_rgba(168,85,247,0.1)] bg-purple-500/5";
+      case "strategy": return "text-emerald-400 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.1)] bg-emerald-500/5";
+      case "journal": return "text-amber-400 border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.1)] bg-amber-500/5";
+      default: return "text-zinc-400 border-zinc-500/30 bg-white/5";
     }
   };
 
   return (
-    <motion.div 
+    <motion.div
       layout
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      whileHover={{ y: -10, rotateX: 2, rotateY: 2 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      className="group relative bg-[#0A0A0A]/40 backdrop-blur-xl border border-white/5 rounded-[2.5rem] p-8 hover:border-blue-500/30 transition-all duration-700 cursor-pointer overflow-hidden flex flex-col h-full shadow-2xl hover:shadow-blue-500/10"
+      whileHover={{ y: -5 }}
+      transition={{ duration: 0.4, ease: "circOut" }}
+      className="group relative h-full flex flex-col justify-between overflow-hidden rounded-[2rem] bg-[#050505] border border-white/5 p-7 hover:border-white/10 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-900/5 cursor-pointer"
       onClick={onEdit}
     >
-      {/* Mesh Decor */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-white/[0.02] blur-3xl rounded-full -translate-y-12 translate-x-12 group-hover:bg-blue-500/[0.08] transition-all duration-700" />
-      <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/[0.01] blur-2xl rounded-full translate-y-12 -translate-x-12 group-hover:bg-purple-500/[0.05] transition-all duration-700" />
-      
-      <div className="relative z-10 flex flex-col h-full space-y-6">
-        <div className="flex items-start justify-between">
-          <div className="flex flex-col gap-3">
-            <div className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-[0.2em] border w-fit transition-all duration-500 group-hover:border-white/20 ${getCategoryColor(note.category)}`}>
-              {note.category}
-            </div>
-            <h3 className="text-xl font-black text-white group-hover:text-blue-400 transition-colors uppercase tracking-tight line-clamp-2 italic">
-              {note.title}
-            </h3>
-          </div>
-          <div className="flex items-center gap-2">
+      {/* Dynamic Glow Gradient */}
+      <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-500/5 blur-[80px] group-hover:bg-blue-500/10 transition-colors duration-700" />
+      <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-purple-500/5 blur-[80px] group-hover:bg-purple-500/10 transition-colors duration-700" />
+
+      {/* Grid Pattern Overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:16px_16px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_0%,black_40%,transparent_100%)] pointer-events-none opacity-50" />
+
+      {/* Header Section */}
+      <div className="relative z-10 flex items-start justify-between mb-6">
+        <div className={`px-3 py-1.5 rounded-md border backdrop-blur-sm text-[9px] font-bold uppercase tracking-widest transition-all duration-300 ${getCategoryColor(note.category)}`}>
+           {note.category}
+        </div>
+        
+        <div className="flex items-center gap-3">
             {note.isPinned && (
-              <div className="p-2 bg-yellow-500/10 text-yellow-500 rounded-xl border border-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.2)]">
-                <Star size={14} fill="currentColor" className="animate-pulse" />
+              <div className="p-1.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.2)]">
+                 <Star size={12} fill="currentColor" />
               </div>
             )}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-              className="p-3 bg-white/5 text-white/20 hover:bg-red-500/10 hover:text-red-500 rounded-xl border border-white/5 opacity-0 group-hover:opacity-100 transition-all active:scale-90"
-            >
-              <Trash2 size={14} />
-            </button>
-          </div>
-        </div>
-
-        <p className="text-white/60 text-[11px] leading-relaxed font-medium line-clamp-4 flex-1 italic group-hover:text-white transition-colors duration-500">
-          "{note.content}"
-        </p>
-
-        <div className="pt-6 border-t border-white/5 flex flex-col gap-5">
-          <div className="flex flex-wrap gap-2">
-            {note.tags.map((tag, i) => (
-              <div key={i} className="flex items-center gap-1.5 px-3 py-1 bg-white/[0.02] border border-white/5 rounded-lg text-[9px] font-black text-white/30 uppercase tracking-widest group-hover:border-blue-500/20 group-hover:text-blue-400 group-hover:bg-blue-500/5 transition-all">
-                <Tag size={8} />
-                {tag}
-              </div>
-            ))}
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 text-white/20 group-hover:text-white/40 transition-colors">
-                <Clock size={12} />
-                <span className="text-[9px] font-black uppercase tracking-widest">
-                  {new Date(note.updatedAt).toLocaleDateString(undefined, {
-                    month: 'short', day: 'numeric', year: 'numeric'
-                  })}
-                </span>
-              </div>
-              <div className="w-px h-3 bg-white/5" />
-              <div className="flex items-center gap-2 text-white/10 group-hover:text-white/30 transition-colors">
-                <BarChart3 size={12} />
-                <span className="text-[9px] font-black uppercase tracking-widest">{note.content.length} SIG</span>
-              </div>
+            <div className="text-[10px] font-mono text-white/20 group-hover:text-white/40 transition-colors bg-white/5 px-2 py-1 rounded">
+               {new Date(note.updatedAt).toLocaleDateString(undefined, { month: 'short', day: '2-digit' })}
             </div>
-            <div className="w-2 h-2 rounded-full bg-white/5 group-hover:bg-blue-500 group-hover:shadow-[0_0_10px_rgba(59,130,246,0.8)] transition-all duration-500" />
-          </div>
+            <button
+               onClick={(e) => { e.stopPropagation(); onDelete(); }}
+               className="p-1.5 text-white/10 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-all opacity-0 group-hover:opacity-100"
+            >
+               <Trash2 size={12} />
+            </button>
         </div>
       </div>
+
+      {/* Main Content */}
+      <div className="relative z-10 flex-1 space-y-4 mb-8">
+         <h3 className="text-lg font-bold text-white/90 leading-tight group-hover:text-blue-200 transition-colors line-clamp-2">
+            {note.title}
+         </h3>
+         <div className="h-px w-10 bg-gradient-to-r from-blue-500/50 to-transparent" />
+         <p className="text-xs text-white/50 font-medium leading-relaxed line-clamp-4 font-mono">
+            {note.content}
+         </p>
+      </div>
+
+       {/* Footer / Tags */}
+       <div className="relative z-10 pt-4 border-t border-white/5 flex flex-wrap gap-2 items-center">
+          <Tag size={10} className="text-white/20" />
+          {note.tags.length > 0 ? note.tags.slice(0, 3).map((tag, i) => (
+             <span key={i} className="px-2 py-1 rounded bg-white/[0.02] border border-white/5 text-[9px] text-white/30 uppercase tracking-wider font-mono hover:border-white/20 hover:text-white/50 transition-colors">
+                {tag}
+             </span>
+          )) : <span className="text-[9px] text-white/10 italic font-mono">No Tags</span>}
+          {note.tags.length > 3 && (
+              <span className="px-2 py-1 text-[9px] text-white/20 font-mono">+{note.tags.length - 3}</span>
+          )}
+       </div>
+
+       {/* Hover Scan Line */}
+       <div className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-[2px]" />
     </motion.div>
   );
 }

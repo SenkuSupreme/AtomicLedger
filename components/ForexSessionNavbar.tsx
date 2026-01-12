@@ -222,10 +222,10 @@ const ForexSessionNavbar = React.memo(function ForexSessionNavbar() {
              <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-red-500/50 shadow-[0_0_10px_rgba(239,68,68,0.4)]" />
              
              {/* Top Node */}
-             <div className="absolute top-0 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-red-500 rounded-full shadow-[0_0_10px_rgba(239,68,68,1)] z-10" />
+             <div className="absolute top-0 -translate-x-1/2 -translate-y-1/2 w-4 h-[0.4] bg-red-500 rounded-full shadow-[0_0_10px_rgba(239,68,68,1)] z-10" />
              
              {/* Bottom Node */}
-             <div className="absolute bottom-0 -translate-x-1/2 translate-y-1/2 w-1.5 h-1.5 bg-red-500 rounded-full z-10" />
+             <div className="absolute bottom-0 -translate-x-1/2 translate-y-1/2 w-4 h-[0.4] bg-red-500 rounded-full z-10" />
              
              {/* Badge */}
              <div className="absolute top-4 left-2 px-2 py-1 bg-red-500/10 border border-red-500/20 rounded text-[9px] font-bold text-red-400 whitespace-nowrap backdrop-blur-sm opacity-50 group-hover:opacity-100 transition-opacity">
@@ -236,7 +236,7 @@ const ForexSessionNavbar = React.memo(function ForexSessionNavbar() {
              <div className="absolute inset-y-0 -left-2 -right-2 bg-transparent" />
 
              {/* Detailed Time Tooltip */}
-             <div className="absolute top-8 left-4 z-[900] hidden group-hover:block w-72 p-4 bg-card/95 backdrop-blur-xl border border-border rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.9)]">
+             <div className="absolute top-8 left-4 ] hidden group-hover:block w-72 p-4 bg-card/95 backdrop-blur-xl border border-border rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.9)]">
                 <div className="text-sm font-bold text-foreground mb-3 pb-2 border-b border-border flex justify-between items-center">
                   <span>Current Status</span>
                   <span className="text-[10px] font-mono text-red-400">LIVE</span>

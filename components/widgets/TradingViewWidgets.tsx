@@ -14,6 +14,8 @@ const TVWidget = ({ scriptSrc, config, id }: { scriptSrc: string, config: any, i
 
   useEffect(() => {
     if (!mounted || !containerRef.current) return;
+    
+    // Nuke existing widget to force re-render and prevent ghosting
     containerRef.current.innerHTML = "";
     
     // Create the script element
@@ -22,12 +24,12 @@ const TVWidget = ({ scriptSrc, config, id }: { scriptSrc: string, config: any, i
     script.async = true;
     
     // Merge theme and transparency into the config
-    // Forcing 'dark' for institutional aesthetic
+    // Forcing 'dark' for institutional aesthetic with absolute black background
     const finalConfig = {
       ...config,
       colorTheme: "dark",
-      isTransparent: false,
-      backgroundColor: "#000000", // Absolute institutional black
+      isTransparent: false, // Critical: Must be false to trigger native dark assets
+      backgroundColor: "#000000",
       container_id: id,
       width: "100%",
       height: "100%",

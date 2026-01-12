@@ -17,9 +17,9 @@ export default function CalendarHeatmap({ data }: CalendarHeatmapProps) {
   
   // Find the start date (the Sunday of the week 25 weeks ago)
   const startDate = new Date(today);
-  startDate.setDate(today.getDate() - (weeks * 7) + (7 - today.getDay() - 1));
+  startDate.setDate(today.getDate() - ((weeks - 1) * 7) - today.getDay());
 
-  const dayLabels = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
+  const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const monthLabels: { label: string; index: number }[] = [];
 
   const grid: string[][] = Array.from({ length: 7 }, () => []);

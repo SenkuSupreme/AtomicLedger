@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Newspaper, ExternalLink, RefreshCw } from "lucide-react";
+import { Newspaper, ExternalLink, RefreshCw, Radio } from "lucide-react";
 import Link from "next/link";
 
 interface NewsWidgetProps {
@@ -34,38 +34,43 @@ export default function NewsWidget({ className = "" }: NewsWidgetProps) {
   const getImpactColor = (impact: string) => {
     switch (impact) {
       case "high":
-        return "border-l-red-500";
+        return "text-red-500 bg-red-500/10 border-red-500/20";
       case "medium":
-        return "border-l-yellow-500";
+        return "text-yellow-500 bg-yellow-500/10 border-yellow-500/20";
       case "low":
-        return "border-l-green-500";
+        return "text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
       default:
-        return "border-l-gray-500";
+        return "text-blue-500 bg-blue-500/10 border-blue-500/20";
     }
   };
 
   return (
     <div className={`h-full flex flex-col ${className}`}>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 pb-4 border-b border-border">
         <div>
-          <h3 className="text-lg font-bold text-white">Market Intelligence</h3>
-          <p className="text-xs text-foreground/80 dark:text-muted-foreground font-mono uppercase tracking-widest">
-            Live Feed
-          </p>
+          <div className="flex items-center gap-2 mb-2">
+             <div className="relative flex items-center justify-center w-3 h-3">
+               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
+             </div>
+             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-red-500">Live Feed</span>
+          </div>
+          <h3 className="text-xl font-black text-white italic tracking-tighter uppercase">Market Intel</h3>
         </div>
         <button 
           onClick={fetchNews}
-          className="p-2 hover:bg-foreground/10 rounded-lg transition-colors text-foreground/60"
+          className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/60 hover:text-white"
         >
-          <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+          <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
         </button>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto pr-1 custom-scrollbar">
+      <div className="h-[300px] space-y-3 overflow-y-auto pr-2 custom-scrollbar relative">
         {loading ? (
-          Array(4).fill(0).map((_, i) => (
-            <div key={i} className="h-20 bg-foreground/5 rounded-lg animate-pulse" />
-          ))
+          <div className="flex flex-col items-center justify-center h-full space-y-4">
+             <Radio size={32} className="text-white/20 animate-pulse" />
+             <p className="text-xs font-mono text-white/40 uppercase tracking-widest animate-pulse">Scanning frequencies...</p>
+          </div>
         ) : news.length > 0 ? (
           news.map((item, index) => (
             <a
@@ -73,40 +78,50 @@ export default function NewsWidget({ className = "" }: NewsWidgetProps) {
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`block p-3 bg-foreground/5 border border-border border-l-4 ${getImpactColor(
-                item.impact
-              )} rounded-lg hover:bg-foreground/10 transition-colors group`}
+              className="block group relative pl-4 border-l border-white/10 hover:border-white/40 transition-all duration-300"
             >
-              <div className="flex items-start justify-between mb-2">
-                <h4 className="text-sm font-medium text-white group-hover:text-blue-400 transition-colors line-clamp-2">
-                  {item.title}
-                </h4>
-                <ExternalLink
-                  size={12}
-                  className="text-foreground/60 dark:text-muted-foreground group-hover:text-foreground/80 transition-colors flex-shrink-0 ml-2"
-                />
-              </div>
-
-              <div className="flex justify-between items-center text-[10px] text-foreground/60 dark:text-muted-foreground font-bold uppercase tracking-wider">
-                <span>{item.source?.name}</span>
-                <span>{new Date(item.publishedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              <div className="absolute left-[-1px] top-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-blue-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              
+              <div className="flex items-start justify-between gap-3">
+                 <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                       <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded border ${getImpactColor(item.impact)}`}>
+                         {item.impact || 'NEWS'}
+                       </span>
+                       <span className="text-[10px] font-mono text-white/40">
+                         {new Date(item.publishedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                       </span>
+                    </div>
+                    <h4 className="text-xs font-bold text-white/90 group-hover:text-blue-400 transition-colors leading-relaxed line-clamp-2">
+                      {item.title}
+                    </h4>
+                    <p className="text-[10px] text-white/50 uppercase tracking-wider font-mono">
+                      // {item.source?.name}
+                    </p>
+                 </div>
               </div>
             </a>
           ))
         ) : (
-          <div className="text-center py-8 text-foreground/40 text-xs italic">
-            Transmission interrupted...
+          <div className="text-center py-12">
+            <Radio size={24} className="text-white/20 mx-auto mb-3" />
+            <div className="text-white/40 text-[10px] font-mono uppercase tracking-widest">
+              Signal Lost
+            </div>
           </div>
         )}
       </div>
 
-      <div className="mt-4 pt-3 border-t border-border">
+      <div className="mt-4 pt-3 border-t border-white/5">
         <Link
           href="/news"
-          className="flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-foreground/60 dark:text-muted-foreground hover:text-white transition-colors"
+          className="flex items-center justify-between group"
         >
-          <Newspaper size={12} />
-          Terminal Intelligence Hub
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/40 group-hover:text-white transition-colors">
+             <Newspaper size={12} />
+             <span>Full Wire</span>
+          </div>
+          <ExternalLink size={12} className="text-white/20 group-hover:text-blue-400 transition-colors" />
         </Link>
       </div>
     </div>

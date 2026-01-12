@@ -22,6 +22,7 @@ import ForexSessionNavbar from "@/components/ForexSessionNavbar";
 import WidgetSystem from "@/components/WidgetSystem";
 import { QuickNotesWidget, EquityCurveWidget } from "@/components/widgets";
 import { usePortfolios } from "@/context/PortfolioContext";
+import EconomicCalendar from "@/components/EconomicCalendar";
 
 export default function Dashboard() {
   const { data: session } = useSession();
@@ -126,7 +127,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6 text-foreground font-sans relative min-h-screen pb-20 overflow-hidden px-4 md:px-6 ">
+    <div className="space-y-6 mx-4 text-foreground font-sans relative min-h-screen pb-20 overflow-hidden px-4 md:px-6 ">
       {/* Background Mesh - Enhanced Visibility */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
         <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary/[0.02] blur-[120px] -translate-y-1/2 translate-x-1/2" />
@@ -187,25 +188,33 @@ export default function Dashboard() {
       {/* Main Analysis Section */}
       <div className="space-y-8 relative z-0">
         
-        {/* Row 1: Sessions & Quick Notes (Side by Side) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Market Sessions (2/3 Width) */}
+        {/* Row 1: Triple Column Interface implies high density data overview */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          {/* Market Sessions (Left - 4 Cols) */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="lg:col-span-8 h-[550px] relative bg-card border border-border rounded-[2rem] shadow-2xl overflow-visible p-1 z-10"
+            className="xl:col-span-4 h-[600px] relative bg-card border border-border rounded-[2rem] shadow-2xl overflow-hidden p-1 z-10"
           >
             <ForexSessionNavbar />
           </motion.div>
 
-          {/* Quick Notes (1/3 Width) */}
+          {/* Economic Calendar (Center - 4 Cols) */}
+          <motion.div
+           initial={{ opacity: 0, y: 30 }}
+           animate={{ opacity: 1, y: 0 }}
+           transition={{ delay: 0.1 }}
+           className="xl:col-span-4 h-[600px] relative z-10"
+          >
+             <EconomicCalendar />
+          </motion.div>
+
+          {/* Quick Notes (Right - 4 Cols) */}
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="lg:col-span-4 h-[550px] relative z-1 bg-card border border-border rounded-[2rem] p-6 overflow-hidden group shadow-2xl flex flex-col"
+            className="xl:col-span-4 h-[600px] relative z-1 bg-card border border-border rounded-[2rem] p-6 overflow-hidden group shadow-2xl flex flex-col"
           >
-
-            
             <div className="relative z-10 flex flex-col h-full">
               <div className="flex items-center justify-between mb-4 border-b border-border pb-4">
                 <div className="space-y-1">

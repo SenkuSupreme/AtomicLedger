@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { neuralCompletion, FALLBACK_MODELS } from '@/lib/ai';
 
 const SYSTEM_PROMPT = `You are a professional AI Trading Analyst and Performance Coach operating at institutional standards.
 
@@ -118,38 +119,17 @@ export async function POST(req: Request) {
       accountContext: allTradeData || {}
     };
 
-    // Best free models from OpenRouter (in order of preference)
-    const freeModels = [
-      'meta-llama/llama-3.2-3b-instruct:free',
-      'microsoft/phi-3-mini-128k-instruct:free', 
-      'huggingfaceh4/zephyr-7b-beta:free',
-      'openchat/openchat-7b:free',
-      'gryphe/mythomist-7b:free'
-    ];
+    // Call Neural Nexus with Resilient Fallback
+    let analysis = '';
+    let usedModel = '';
 
-    let analysis = null;
-    let usedModel = null;
-
-    // Try each free model until one works
-    for (const model of freeModels) {
-      try {
-        const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-            'Content-Type': 'application/json',
-            'X-Title': 'Trading Journal AI Analysis'
-          },
-          body: JSON.stringify({
-            model: model,
-            messages: [
-              {
-                role: 'system',
-                content: SYSTEM_PROMPT
-              },
-              {
-                role: 'user',
-                content: `Analyze this trading execution and provide professional feedback:
+    try {
+      const { content, model } = await neuralCompletion({
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          {
+            role: 'user',
+            content: `Analyze this trading execution and provide professional feedback:
 
 TRADE DETAILS:
 ${JSON.stringify(analysisData.currentTrade, null, 2)}
@@ -158,33 +138,17 @@ ACCOUNT CONTEXT:
 ${JSON.stringify(analysisData.accountContext, null, 2)}
 
 Please provide a comprehensive analysis following the mandatory output structure.`
-              }
-            ],
-            temperature: 0.3,
-            max_tokens: 2000,
-            top_p: 0.9
-          })
-        });
-
-        if (openRouterResponse.ok) {
-          const aiResponse = await openRouterResponse.json();
-          const responseText = aiResponse.choices[0]?.message?.content;
-          
-          if (responseText && responseText.length > 100) {
-            analysis = responseText;
-            usedModel = model;
-            break;
           }
-        }
-      } catch (error) {
-        console.error(`Failed with model ${model}:`, error);
-        continue;
-      }
-    }
+        ],
+        model: FALLBACK_MODELS[0],
+        temperature: 0.3,
+        max_tokens: 2000,
+      });
 
-    if (!analysis) {
-      // Fallback to enhanced analysis if all OpenRouter models fail
-      console.error('All OpenRouter models failed, using enhanced fallback analysis');
+      analysis = content;
+      usedModel = model;
+    } catch (nexusError) {
+      console.error('Neural Nexus Blackout in Sentiment Engine:', nexusError);
       return getFallbackAnalysis(tradeData);
     }
 

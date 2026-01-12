@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -10,38 +9,20 @@ import Task from '@/lib/models/Task';
 import Goal from '@/lib/models/Goal';
 import Habit from '@/lib/models/Habit';
 import mongoose from 'mongoose';
-import OpenAI from 'openai';
+import { neuralCompletion, FALLBACK_MODELS } from '@/lib/ai';
 
-const openai = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY || 'sk-or-v1-placeholder',
-  defaultHeaders: {
-    "HTTP-Referer": "https://journalingapp.vercel.app",
-    "X-Title": "Forex Journaling App",
-  },
-});
-
-const MODELS = {
-  PRIMARY: "meta-llama/llama-3.3-70b-instruct:free",
-  FALLBACK: "deepseek/deepseek-chat:free", // Adjusted to standard ID, user asked for v3.1 but generic 'chat' usually points to latest free
-  STRATEGY: "deepseek/deepseek-r1:free", // Using distinct r1 for reasoning/strategy as chimera might be unstable/unavailable
-  FAST: "google/gemini-2.0-flash-lite-preview-02-05:free" // User asked for mimo, falling back to reliable flash-lite for speed if mimo fails
-};
-
-// User specific requests (preserving exact strings where possible, mapping to closest working free if needed)
-// Mapping strictly as requested but with fallbacks if IDs are invalid on OR
 const REQUESTED_MODELS = {
   PRIMARY: "meta-llama/llama-3.3-70b-instruct:free",
-  RISK: "deepseek/deepseek-chat-v3.1:free", // Note: Verify this ID
-  STRATEGY: "tngtech/deepseek-r1t2-chimera:free",
-  FAST: "xiaomi/mimo-v2-flash:free"
+  RISK: "deepseek/deepseek-chat:free", 
+  STRATEGY: "deepseek/deepseek-r1:free",
+  FAST: "google/gemini-2.0-flash-exp:free"
 };
 
 const determineModel = (content: string): string => {
   const lower = content.toLowerCase();
-  if (lower.includes('quick') || lower.includes('check') || lower.includes('ui')) return REQUESTED_MODELS.FAST;
-  if (lower.includes('strategy') || lower.includes('review') || lower.includes('journal')) return REQUESTED_MODELS.STRATEGY;
-  if (lower.includes('risk') || lower.includes('validate') || lower.includes('safe')) return REQUESTED_MODELS.RISK;
+  if (lower.includes('quick') || lower.includes('check') || lower.includes('ui') || lower.includes('task')) return REQUESTED_MODELS.FAST;
+  if (lower.includes('strategy') || lower.includes('review') || lower.includes('journal') || lower.includes('analysis')) return REQUESTED_MODELS.STRATEGY;
+  if (lower.includes('risk') || lower.includes('validate') || lower.includes('safe') || lower.includes('stop')) return REQUESTED_MODELS.RISK;
   return REQUESTED_MODELS.PRIMARY;
 };
 
@@ -58,7 +39,6 @@ export async function POST(req: Request) {
     await dbConnect();
 
     // 1. Fetch Context Data
-    // Extract keywords for simple relevance search
     const searchTerms = latestMessage.split(' ')
       .filter((word: string) => word.length > 3 && !['what', 'when', 'where', 'which', 'who', 'show', 'tell', 'about'].includes(word.toLowerCase()))
       .map((word: string) => word.replace(/[^a-zA-Z0-9]/g, ''));
@@ -71,7 +51,7 @@ export async function POST(req: Request) {
       $or: [
         { name: { $regex: searchRegex } },
         { 'setup.setupName': { $regex: searchRegex } },
-        { 'blocks.content': { $regex: searchRegex } } // Detailed visual content
+        { 'blocks.content': { $regex: searchRegex } }
       ]
     })
     .limit(3)
@@ -143,7 +123,6 @@ export async function POST(req: Request) {
       .select('title content createdAt')
       .lean();
 
-    // Checklists (Ensure model is registered)
     const ChecklistSchema = new mongoose.Schema({
         userId: { type: String, required: true },
         name: { type: String, required: true },
@@ -151,7 +130,6 @@ export async function POST(req: Request) {
         isActive: { type: Boolean, default: false },
         completionRate: { type: Number, default: 0 }
     });
-    // Use existing model or register new one to prevent OverwriteModelError
     const Checklist = mongoose.models.Checklist || mongoose.model('Checklist', ChecklistSchema);
 
     const checklists = await Checklist.find({ userId: session.user.email, isActive: true })
@@ -189,25 +167,11 @@ export async function POST(req: Request) {
       return `- Journal: ${j.title} (${new Date(j.updatedAt).toLocaleDateString()})\n  Content:\n${contentPreview}...`;
     }).join('\n\n');
 
-    const taskContext = tasks.map(t =>
-      `- [${t.status.toUpperCase()}] ${t.title} (Priority: ${t.priority})`
-    ).join('\n');
-
-    const goalContext = goals.map(g =>
-      `- Goal: ${g.title} (${g.progress}%) - Target: ${g.target}`
-    ).join('\n');
-
-    const habitContext = habitDocs.map(h =>
-      `- Habit: ${h.title} (Streak: ${h.streak} ${h.frequency})`
-    ).join('\n');
-
-    const notebookContext = notebookNotes.map(n =>
-      `- Note: ${n.title || 'Untitled'} - "${n.content?.substring(0, 1000)}..."`
-    ).join('\n');
-
-    const checklistContext = checklists.map((c: any) =>
-      `- Active Protocol: ${c.name} (Completion: ${c.completionRate}%)`
-    ).join('\n');
+    const taskContext = tasks.map(t => `- [${t.status.toUpperCase()}] ${t.title} (Priority: ${t.priority})`).join('\n');
+    const goalContext = goals.map(g => `- Goal: ${g.title} (${g.progress}%) - Target: ${g.target}`).join('\n');
+    const habitContext = habitDocs.map(h => `- Habit: ${h.title} (Streak: ${h.streak} ${h.frequency})`).join('\n');
+    const notebookContext = notebookNotes.map(n => `- Note: ${n.title || 'Untitled'} - "${n.content?.substring(0, 1000)}..."`).join('\n');
+    const checklistContext = checklists.map((c: any) => `- Active Protocol: ${c.name} (Completion: ${c.completionRate}%)`).join('\n');
 
     const systemPrompt = `
 You are Apex Intelligence, an elite institutional trading AI assistant integrated into the user's trading journal.
@@ -242,23 +206,16 @@ ${checklistContext || 'No active checklists.'}
 
 DIRECTIVES:
 1. Act as a high-performance trading coach and analyst. Tone: Professional, direct, "institutional", and analytical.
-2. USE THE DATA above to personalize your answers. If the user asks about their performance, reference the specific trades.
-3. If the user asks about a specific strategy, reference its details from the context.
-4. If no data exists for a query (e.g. no trades found), admit it gracefully and provide general best practices.
-5. Keep responses concise and actionable. Avoid fluff.
-6. Use formatting (bullet points, bold text) to make output readable.
+2. USE THE DATA above to personalize your answers.
+3. Keep responses concise and actionable.
+4. Use formatting (bullet points, bold text).
+`;
 
-Reply to the user's latest message based on this context.
-    `;
-
-    // 3. Call OpenAI with Model Selection & Fallback
+    // 3. Call Neural Nexus with Model Selection & Resilient Fallback
     const targetModel = determineModel(latestMessage);
-    let aiResponse;
-    let usedModel = targetModel;
-
+    
     try {
-      const completion = await openai.chat.completions.create({
-        model: targetModel, 
+      const { content: aiResponse, model: usedModel } = await neuralCompletion({
         messages: [
           { role: "system", content: systemPrompt },
           ...messages.map((m: any) => ({ 
@@ -266,41 +223,24 @@ Reply to the user's latest message based on this context.
               content: m.content 
           }))
         ],
+        model: targetModel,
         temperature: 0.7,
-        max_tokens: 500,
+        max_tokens: 1000,
       });
-      aiResponse = completion.choices[0].message.content;
-    } catch (primaryError) {
-      console.warn(`Primary model ${targetModel} failed, switching to fallback...`, primaryError);
-      
-      // Fallback to Risk/Validation Model (Deepseek)
-      try {
-        usedModel = REQUESTED_MODELS.RISK;
-        const fallbackCompletion = await openai.chat.completions.create({
-          model: usedModel, 
-          messages: [
-            { role: "system", content: systemPrompt + "\n[SYSTEM: Fallback Model Activated]" },
-             ...messages.map((m: any) => ({ 
-                role: m.role === 'ai' ? 'assistant' : 'user', 
-                content: m.content 
-            }))
-          ],
-          temperature: 0.7,
-          max_tokens: 500,
-        });
-        aiResponse = fallbackCompletion.choices[0].message.content;
-      } catch (fallbackError) {
-        console.error("All models failed", fallbackError);
-        throw fallbackError;
-      }
-    }
 
-    return NextResponse.json({ 
-        role: 'ai', 
-        content: aiResponse,
-        model: usedModel,
-        timestamp: new Date()
-    });
+      return NextResponse.json({ 
+          role: 'ai', 
+          content: aiResponse,
+          model: usedModel,
+          timestamp: new Date()
+      });
+    } catch (nexusError) {
+      console.error('Neural Nexus Blackout:', nexusError);
+      return NextResponse.json(
+        { error: 'Neural nexus encountered a blackout. No operational nodes available.' },
+        { status: 500 }
+      );
+    }
 
   } catch (error) {
     console.error('AI Chat Error:', error);

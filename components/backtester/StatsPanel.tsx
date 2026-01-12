@@ -121,54 +121,112 @@ export default function StatsPanel({ positions, account, currentCandle, onCloseP
                         </div>
                      </div>
                 ) : activeTab === 'performance' ? (
-                    <div className="p-4 grid grid-cols-4 gap-4 text-xs font-mono">
-                        <div className="p-4 bg-white/5 rounded border border-white/5">
-                             <div className="text-gray-500 mb-1 uppercase tracking-widest text-[10px]">Total Trades</div>
-                             <div className="text-2xl font-bold text-gray-200">{positions.filter(p => !p.isOpen && !p.isPending).length}</div>
-                        </div>
-                        <div className="p-4 bg-white/5 rounded border border-white/5">
-                             <div className="text-gray-500 mb-1 uppercase tracking-widest text-[10px]">Win Rate</div>
-                             <div className="text-2xl font-bold text-blue-400">
-                                 {(() => {
-                                     const closed = positions.filter(p => !p.isOpen && !p.isPending);
-                                     if(closed.length === 0) return "0.0%";
-                                     const wins = closed.filter(p => (p.pnl || 0) > 0).length;
-                                     return ((wins / closed.length) * 100).toFixed(1) + "%";
-                                 })()}
+                    <div className="p-6 grid grid-cols-4 gap-4 text-xs">
+                        {/* 1. Total P&L - Primary Metric */}
+                        <div className="col-span-1 p-5 rounded-2xl bg-gradient-to-br from-white/[0.08] to-white/[0.02] border border-white/10 relative overflow-hidden group">
+                             <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <span className="text-4xl text-white font-black">$</span>
                              </div>
-                        </div>
-                        <div className="p-4 bg-white/5 rounded border border-white/5">
-                             <div className="text-gray-500 mb-1 uppercase tracking-widest text-[10px]">Profit Factor</div>
-                             <div className="text-2xl font-bold text-emerald-400">
-                                 {(() => {
-                                     const closed = positions.filter(p => !p.isOpen && !p.isPending);
-                                     const grossProfit = closed.reduce((acc, p) => acc + ((p.pnl||0) > 0 ? (p.pnl||0) : 0), 0);
-                                     const grossLoss = Math.abs(closed.reduce((acc, p) => acc + ((p.pnl||0) < 0 ? (p.pnl||0) : 0), 0));
-                                     if(grossLoss === 0) return grossProfit > 0 ? "∞" : "0.00";
-                                     return (grossProfit / grossLoss).toFixed(2);
-                                 })()}
-                             </div>
-                        </div>
-                        <div className="p-4 bg-white/5 rounded border border-white/5">
-                             <div className="text-gray-500 mb-1 uppercase tracking-widest text-[10px]">Net P&L</div>
-                             <div className={`text-2xl font-bold ${account.balance >= 100000 ? 'text-emerald-400' : 'text-red-400'}`}>
+                             <div className="text-gray-400 mb-2 uppercase tracking-[0.2em] text-[9px] font-bold">Total P&L</div>
+                             <div className={`text-3xl font-black tracking-tight ${(account.balance - 100000) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                                  ${(account.balance - 100000).toFixed(2)}
                              </div>
-                        </div>
-                        <div className="col-span-2 p-4 bg-white/5 rounded border border-white/5">
-                             <div className="text-gray-500 mb-1 uppercase tracking-widest text-[10px]">Best Setup (Playbook)</div>
-                             <div className="text-lg font-bold text-gray-300">
+                             <div className="mt-2 text-[10px] text-gray-500 font-mono">
                                  {(() => {
                                      const closed = positions.filter(p => !p.isOpen && !p.isPending);
-                                     const playbooks: Record<string, number> = {};
-                                     closed.forEach(p => {
-                                         if(p.playbook) {
-                                             playbooks[p.playbook] = (playbooks[p.playbook] || 0) + (p.pnl || 0);
-                                         }
-                                     });
-                                     const best = Object.entries(playbooks).sort((a,b) => b[1] - a[1])[0];
-                                     return best ? `${best[0]} (+$${best[1].toFixed(2)})` : "No Data";
+                                     if(closed.length === 0) return "No Data";
+                                     const avg = (account.balance - 100000) / closed.length;
+                                     return `${avg >= 0 ? '+' : ''}${avg.toFixed(2)} avg per trade`;
                                  })()}
+                             </div>
+                        </div>
+
+                        {/* 2. Win Rate - with Visual Bar */}
+                        <div className="col-span-1 p-5 rounded-2xl bg-[#0A0A0A] border border-white/5 relative">
+                             <div className="text-gray-400 mb-2 uppercase tracking-[0.2em] text-[9px] font-bold">Win Rate</div>
+                             {(() => {
+                                 const closed = positions.filter(p => !p.isOpen && !p.isPending);
+                                 const wins = closed.filter(p => (p.pnl || 0) > 0).length;
+                                 const rate = closed.length > 0 ? (wins / closed.length) * 100 : 0;
+                                 return (
+                                     <>
+                                        <div className="text-3xl font-black text-blue-400 mb-1">{rate.toFixed(1)}%</div>
+                                        <div className="text-[10px] text-gray-500 font-mono mb-3">{wins}W - {closed.length - wins}L</div>
+                                        <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                            <div className="h-full bg-blue-500 rounded-full" style={{ width: `${rate}%` }} />
+                                        </div>
+                                     </>
+                                 );
+                             })()}
+                        </div>
+
+                        {/* 3. Profit Factor */}
+                        <div className="col-span-1 p-5 rounded-2xl bg-[#0A0A0A] border border-white/5">
+                             <div className="text-gray-400 mb-2 uppercase tracking-[0.2em] text-[9px] font-bold">Profit Factor</div>
+                             {(() => {
+                                 const closed = positions.filter(p => !p.isOpen && !p.isPending);
+                                 const grossProfit = closed.reduce((acc, p) => acc + ((p.pnl||0) > 0 ? (p.pnl||0) : 0), 0);
+                                 const grossLoss = Math.abs(closed.reduce((acc, p) => acc + ((p.pnl||0) < 0 ? (p.pnl||0) : 0), 0));
+                                 const pf = grossLoss === 0 ? (grossProfit > 0 ? 999 : 0) : grossProfit / grossLoss;
+                                 
+                                 return (
+                                     <>
+                                        <div className="text-3xl font-black text-emerald-400 mb-1">{pf === 999 ? "∞" : pf.toFixed(2)}</div>
+                                        <div className={`text-[9px] uppercase tracking-widest font-bold ${pf > 1.5 ? 'text-emerald-500/60' : 'text-gray-600'}`}>
+                                            {pf > 2 ? 'High Performance' : pf > 1 ? 'Profitable' : 'Drawdown'}
+                                        </div>
+                                     </>
+                                 );
+                             })()}
+                        </div>
+
+                        {/* 4. Expectancy */}
+                        <div className="col-span-1 p-5 rounded-2xl bg-[#0A0A0A] border border-white/5">
+                             <div className="text-gray-400 mb-2 uppercase tracking-[0.2em] text-[9px] font-bold">Expectancy</div>
+                             {(() => {
+                                 const closed = positions.filter(p => !p.isOpen && !p.isPending);
+                                 if (closed.length === 0) return <div className="text-3xl font-black text-gray-700">$0.00</div>;
+                                 
+                                 const totalPnL = account.balance - 100000;
+                                 const expectancy = totalPnL / closed.length;
+                                 
+                                 return (
+                                     <>
+                                        <div className={`text-3xl font-black ${expectancy >= 0 ? 'text-emerald-400' : 'text-red-400'} mb-1`}>
+                                            {expectancy >= 0 ? '+' : ''}${expectancy.toFixed(2)}
+                                        </div>
+                                        <div className="text-[9px] text-gray-600 uppercase tracking-widest font-bold">Per Trade Edge</div>
+                                     </>
+                                 );
+                             })()}
+                        </div>
+
+                         {/* Breakdown Row */}
+                        <div className="col-span-2 p-5 rounded-2xl bg-[#0A0A0A] border border-white/5 flex flex-col justify-center">
+                             <div className="flex justify-between items-end mb-2">
+                                 <div>
+                                    <div className="text-gray-400 uppercase tracking-[0.2em] text-[9px] font-bold mb-1">Max Drawdown</div>
+                                    <div className="text-2xl font-bold text-red-400">
+                                         $0.00 <span className="text-[10px] text-gray-500 font-normal ml-2">(Mock)</span>
+                                    </div>
+                                 </div>
+                                 <div className="text-right">
+                                     <div className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-500 text-[9px] font-bold uppercase border border-emerald-500/20">Minimal Risk</div>
+                                 </div>
+                             </div>
+                        </div>
+
+                        <div className="col-span-2 p-5 rounded-2xl bg-[#0A0A0A] border border-white/5 flex flex-col justify-center">
+                             <div className="flex items-center gap-8">
+                                 <div>
+                                    <div className="text-gray-400 uppercase tracking-[0.2em] text-[9px] font-bold mb-1">Total Trades</div>
+                                    <div className="text-3xl font-black text-white">{positions.filter(p => !p.isOpen && !p.isPending).length}</div>
+                                 </div>
+                                 <div className="h-8 w-[1px] bg-white/10" />
+                                 <div>
+                                     <div className="text-[10px] text-emerald-400 font-mono mb-1">{positions.filter(p => !p.isOpen && !p.isPending && (p.pnl||0)>0).length} winners</div>
+                                     <div className="text-[10px] text-red-400 font-mono">{positions.filter(p => !p.isOpen && !p.isPending && (p.pnl||0)<0).length} losers</div>
+                                 </div>
                              </div>
                         </div>
                     </div>

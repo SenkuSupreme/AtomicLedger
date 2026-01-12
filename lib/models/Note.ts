@@ -20,7 +20,7 @@ const NoteSchema = new mongoose.Schema({
   }],
   category: {
     type: String,
-    enum: ['trading', 'strategy', 'market', 'personal', 'idea', 'lesson', 'other'],
+    enum: ['trading', 'strategy', 'market', 'personal', 'idea', 'lesson', 'other', 'analysis', 'journal', 'general'],
     default: 'other',
   },
   priority: {

@@ -122,36 +122,51 @@ export default function MetricWidget({
   const trend = config.getTrend(stats);
 
   return (
-    <div className={`h-full ${className}`}>
-      <div className="flex justify-between items-start mb-6">
-        <div className="p-3 bg-foreground/5 rounded-2xl border border-border text-foreground/90 dark:text-foreground group-hover:text-foreground group-hover:bg-foreground/10 transition-all">
-          <IconComponent size={24} />
-        </div>
+    <div className={`h-full p-5 rounded-2xl bg-gradient-to-br from-white/[0.08] to-white/[0.02] relative overflow-hidden group ${className}`}>
+      {/* Icon Watermark */}
+      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+        <IconComponent size={48} className="text-white" />
+      </div>
+
+      {/* Trend Indicator */}
+      <div className="absolute top-4 left-4">
         {trend === "up" && (
-          <ArrowUpRight size={16} className="text-green-500" />
+          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+            <ArrowUpRight size={12} className="text-emerald-500" />
+            <span className="text-[8px] font-bold uppercase tracking-wider text-emerald-500">Positive</span>
+          </div>
         )}
         {trend === "down" && (
-          <ArrowDownRight size={16} className="text-red-500" />
+          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20">
+            <ArrowDownRight size={12} className="text-red-500" />
+            <span className="text-[8px] font-bold uppercase tracking-wider text-red-500">Negative</span>
+          </div>
+        )}
+        {trend === "neutral" && (
+          <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-gray-500/10 border border-gray-500/20">
+            <Activity size={12} className="text-gray-400" />
+            <span className="text-[8px] font-bold uppercase tracking-wider text-gray-400">Neutral</span>
+          </div>
         )}
       </div>
 
-      <div className="text-4xl font-black text-foreground dark:text-foreground tracking-tighter mb-3 italic tabular-nums">
-        {value}
-      </div>
-
-      <div className="flex justify-between items-end">
-        <div className="text-[10px] font-black text-foreground/80 dark:text-muted-foreground uppercase tracking-[0.3em]">
+      {/* Content */}
+      <div className="relative z-10 pt-12">
+        <div className="text-gray-400 mb-2 uppercase tracking-[0.2em] text-[9px] font-bold">
           {config.label}
         </div>
-        <div
-          className={`text-[10px] font-black uppercase tracking-wider italic ${
-            trend === "up"
-              ? "text-emerald-500"
-              : trend === "down"
-              ? "text-rose-500"
-              : "text-foreground dark:text-muted-foreground"
-          }`}
-        >
+        
+        <div className={`text-4xl font-black tracking-tight mb-2 tabular-nums ${
+          trend === "up"
+            ? "text-emerald-400"
+            : trend === "down"
+            ? "text-red-400"
+            : "text-white"
+        }`}>
+          {value}
+        </div>
+
+        <div className="text-[10px] text-gray-500 font-mono">
           {subValue}
         </div>
       </div>

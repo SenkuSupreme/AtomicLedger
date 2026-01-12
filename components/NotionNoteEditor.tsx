@@ -207,21 +207,21 @@ const FloatingToolbar = () => {
                 <div className="flex items-center gap-0.5">
                     <button 
                         onClick={() => format('bold')} 
-                        className={`p-2 rounded-lg transition-colors ${activeStyles.bold ? 'bg-sky-500/20 text-sky-400' : 'text-white/70 hover:text-white hover:bg-white/10'}`} 
+                        className={`p-2 rounded-lg transition-colors ${activeStyles.bold ? 'bg-sky-500/20 text-sky-400' : 'text-white/90 hover:text-white hover:bg-white/10'}`} 
                         title="Bold"
                     >
                         <span className="font-black font-sans">B</span>
                     </button>
                     <button 
                         onClick={() => format('italic')} 
-                        className={`p-2 rounded-lg transition-colors ${activeStyles.italic ? 'bg-sky-500/20 text-sky-400' : 'text-white/70 hover:text-white hover:bg-white/10'}`} 
+                        className={`p-2 rounded-lg transition-colors ${activeStyles.italic ? 'bg-sky-500/20 text-sky-400' : 'text-white/90 hover:text-white hover:bg-white/10'}`} 
                         title="Italic"
                     >
                         <span className="italic font-serif">I</span>
                     </button>
                     <button 
                         onClick={() => format('underline')} 
-                        className={`p-2 rounded-lg transition-colors ${activeStyles.underline ? 'bg-sky-500/20 text-sky-400' : 'text-white/70 hover:text-white hover:bg-white/10'}`} 
+                        className={`p-2 rounded-lg transition-colors ${activeStyles.underline ? 'bg-sky-500/20 text-sky-400' : 'text-white/90 hover:text-white hover:bg-white/10'}`} 
                         title="Underline"
                     >
                         <span className="underline font-serif underline-offset-4 decoration-white/30">U</span>
@@ -376,7 +376,7 @@ const ContentBlock = React.forwardRef(({ html, tagName: Tag = 'div', className, 
                 if (typeof ref === 'function') ref(node);
                 else if (ref) (ref as React.MutableRefObject<HTMLElement | null>).current = node;
             }}
-            className={`outline-none min-h-[1.5em] focus:empty:before:content-[attr(data-placeholder)] empty:before:text-white/20 px-1 transition-all duration-200 ${className} [&>b]:font-black [&>i]:italic [&>u]:underline [&>mark]:bg-amber-500/20 [&>mark]:text-amber-500 [&>mark]:px-2 [&>mark]:py-0.5 [&>mark]:mx-0.5 [&>mark]:rounded-[2px_10px_4px_8px/8px_3px_10px_2px] [&>mark]:[box-decoration-break:clone] [&_*[style*="background-color"]]:px-2 [&_*[style*="background-color"]]:py-0.5 [&_*[style*="background-color"]]:mx-0.5 [&_*[style*="background-color"]]:rounded-[2px_12px_3px_15px/15px_3px_12px_2px] [&_*[style*="background-color"]]:[box-decoration-break:clone] [&_*[style*="background-color"]]:[-webkit-box-decoration-break:clone] relative after:content-[attr(data-prediction)] after:text-white/20 after:pointer-events-none after:absolute after:pl-1`}
+            className={`outline-none min-h-[1.5em] focus:empty:before:content-[attr(data-placeholder)] empty:before:text-white/40 px-1 transition-all duration-200 ${className} [&>b]:font-black [&>i]:italic [&>u]:underline [&>mark]:bg-amber-500/20 [&>mark]:text-amber-500 [&>mark]:px-2 [&>mark]:py-0.5 [&>mark]:mx-0.5 [&>mark]:rounded-[2px_10px_4px_8px/8px_3px_10px_2px] [&>mark]:[box-decoration-break:clone] [&_*[style*="background-color"]]:px-2 [&_*[style*="background-color"]]:py-0.5 [&_*[style*="background-color"]]:mx-0.5 [&_*[style*="background-color"]]:rounded-[2px_12px_3px_15px/15px_3px_12px_2px] [&_*[style*="background-color"]]:[box-decoration-break:clone] [&_*[style*="background-color"]]:[-webkit-box-decoration-break:clone] relative after:content-[attr(data-prediction)] after:text-white/30 after:pointer-events-none after:absolute after:pl-1`}
             contentEditable
             suppressContentEditableWarning
             onInput={handleInput}
@@ -803,7 +803,7 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAt, i
                         <div className="flex items-center gap-2 group/toggle-head">
                             <button 
                                 onClick={() => updateBlock(block.id, { metadata: { ...block.metadata, isOpen: !isOpen } })}
-                                className={`p-1.5 hover:bg-white/10 rounded-lg transition-transform duration-200 ${isOpen ? 'rotate-90' : ''} text-white/30 hover:text-white`}
+                                className={`p-1.5 hover:bg-white/10 rounded-lg transition-transform duration-200 ${isOpen ? 'rotate-90' : ''} text-white/50 hover:text-white`}
                             >
                                 <ChevronRightIcon size={14} />
                             </button>
@@ -830,7 +830,7 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAt, i
                                 <ContentBlock 
                                     html={block.metadata?.details || ''} 
                                     onChange={(v: string) => updateBlock(block.id, { metadata: { ...block.metadata, details: v } })} 
-                                    className="text-[16px] leading-relaxed text-white/70 min-h-[1.5em]" 
+                                    className="text-[16px] leading-relaxed text-white/80 min-h-[1.5em]" 
                                     placeholder="Nested details..." 
                                 />
                             </div>
@@ -1112,7 +1112,7 @@ const EditorBlock = React.memo(({ block, updateBlock, removeBlock, addBlockAt, i
                     </div>
                 );
             default:
-                return <ContentBlock ref={textareaRef} html={block.content} onChange={handleTextChange} onKeyDown={handleKeyDown} onFocus={() => onFocus(block.id)} className="text-[15px] font-medium leading-relaxed text-white/70" placeholder="Empty block. Type '/' for commands..." />;
+                return <ContentBlock ref={textareaRef} html={block.content} onChange={handleTextChange} onKeyDown={handleKeyDown} onFocus={() => onFocus(block.id)} className="text-[15px] font-medium leading-relaxed text-white/90" placeholder="Empty block. Type '/' for commands..." />;
         }
     };
 
@@ -1514,16 +1514,61 @@ export default function NotionNoteEditor({ noteId, onBack }: { noteId?: string, 
                                         </span>
                                     )}
                                 </div>
-                                <input 
+                                    <input 
                                     value={data.title}
                                     onChange={(e) => setData(prev => ({ ...prev, title: e.target.value }))}
-                                    className="bg-transparent border-none p-0 text-4xl font-black italic uppercase tracking-tighter text-white/50 cursor-text focus:ring-0 w-full max-w-[600px] leading-tight truncate outline-none"
+                                    className="bg-transparent border-none p-0 text-4xl font-black italic uppercase tracking-tighter text-white/90 placeholder:text-white/30 cursor-text focus:ring-0 w-full max-w-[600px] leading-tight truncate outline-none"
                                     placeholder="NOTE IDENTIFIER"
                                 />
                     </div>
                 </div>
                 
+                {/* Actions Terminal */}
                 <div className="flex items-center gap-6">
+                    {/* Category / Tag Selector */}
+                    <div className="relative group/cat z-50">
+                        <button className="flex items-center gap-3 px-5 py-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:border-white/20 transition-all">
+                            <div className={`w-2 h-2 rounded-full shadow-[0_0_10px_currentColor] ${
+                                data.category === 'trading' ? 'bg-blue-500 text-blue-500' :
+                                data.category === 'analysis' ? 'bg-purple-500 text-purple-500' :
+                                data.category === 'strategy' ? 'bg-emerald-500 text-emerald-500' :
+                                data.category === 'journal' ? 'bg-amber-500 text-amber-500' :
+                                'bg-zinc-500 text-zinc-500'
+                            }`} />
+                            <span className="text-[11px] font-black uppercase tracking-widest text-white/80">
+                                {data.category || 'SELECT CATEGORY'}
+                            </span>
+                            <ChevronDown size={14} className="text-white/50 group-hover/cat:text-white transition-colors" />
+                        </button>
+                        
+                        <div className="absolute top-full right-0 mt-2 w-56 bg-[#0A0A0A] border border-white/15 rounded-xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] opacity-0 invisible group-hover/cat:opacity-100 group-hover/cat:visible transition-all duration-200 transform origin-top-right z-50">
+                             <div className="px-4 py-3 border-b border-white/5">
+                                 <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/40">Classification</span>
+                             </div>
+                             <div className="p-1">
+                                 {[
+                                     { id: 'trading', label: 'Trading Execution', color: 'bg-blue-500', text: 'text-blue-500' },
+                                     { id: 'analysis', label: 'Market Analysis', color: 'bg-purple-500', text: 'text-purple-500' },
+                                     { id: 'strategy', label: 'Strategy Design', color: 'bg-emerald-500', text: 'text-emerald-500' },
+                                     { id: 'journal', label: 'Daily Journal', color: 'bg-amber-500', text: 'text-amber-500' },
+                                     { id: 'general', label: 'General Notes', color: 'bg-zinc-500', text: 'text-zinc-500' }
+                                 ].map((cat) => (
+                                     <button
+                                         key={cat.id}
+                                         onClick={() => setData(prev => ({ ...prev, category: cat.id }))}
+                                         className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors text-left group/item"
+                                     >
+                                         <div className={`w-2 h-2 rounded-full ${cat.color} ${data.category === cat.id ? 'ring-2 ring-white/20' : ''}`} />
+                                         <span className={`text-[10px] font-bold uppercase tracking-widest ${data.category === cat.id ? 'text-white' : 'text-white/50 group-hover/item:text-white/80'}`}>
+                                             {cat.label}
+                                         </span>
+                                         {data.category === cat.id && <div className="ml-auto text-emerald-500"><CheckSquare size={12} /></div>}
+                                     </button>
+                                 ))}
+                             </div>
+                        </div>
+                     </div>
+
                     <button 
                         onClick={handleSave} 
                         disabled={isSaving}
