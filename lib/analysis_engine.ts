@@ -455,15 +455,19 @@ function buildResult(symbol: string, currentPrice: number, tfData: Record<Timefr
 
     const signals: DiagnosticSignal[] = [
         { 
-            label: 'HH/LL Structural Confirmation', 
-            status: mainTf.trend === htf.trend ? 'VALID' : 'PENDING' 
-        },
-        { 
-            label: 'HTF Bias Alignment', 
+            label: 'Institutional Trend Context', 
             status: dynamicConditions.htfBias ? 'VALID' : 'INVALID' 
         },
         { 
-            label: 'Session Kill Zone Active', 
+            label: 'Liquidity Purge Verification', 
+            status: dynamicConditions.liqSweep ? 'VALID' : 'PENDING' 
+        },
+        { 
+            label: 'Market Structure Displacement', 
+            status: mainTf.trend === overallBias ? 'VALID' : 'PENDING' 
+        },
+        { 
+            label: 'Execution Window Availability', 
             status: isKillZone ? 'VALID' : 'INVALID' 
         }
     ];

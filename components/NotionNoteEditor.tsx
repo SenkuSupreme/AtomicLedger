@@ -231,19 +231,44 @@ const FloatingToolbar = () => {
                 <button onClick={() => format('undo')} className="p-2 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition-colors" title="Undo Action">
                     <Undo size={16} />
                 </button>
-                <div className="w-[1px] h-5 bg-white/10 mx-1" />
-                <div className="flex items-center gap-1">
-                    <div className="relative group">
-                        <button className="p-2 hover:bg-white/10 rounded-lg text-sky-400 transition-colors relative" title="Text Color Picker">
-                           <Palette size={16} />
-                           <input type="color" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onInput={(e) => format('foreColor', (e.target as HTMLInputElement).value)} />
-                        </button>
+                <div className="flex items-center gap-1 px-1">
+                    <div className="flex items-center gap-1 border-r border-white/10 pr-2 mr-1">
+                        <div className="relative group">
+                            <button className="p-2 hover:bg-white/10 rounded-lg text-sky-400 transition-colors relative" title="Custom Text Color">
+                               <Palette size={14} />
+                               <input type="color" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onInput={(e) => format('foreColor', (e.target as HTMLInputElement).value)} />
+                            </button>
+                        </div>
+                        <div className="flex gap-1">
+                            {['#ffffff', '#38bdf8', '#4ade80', '#fb7185', '#fbbf24'].map(color => (
+                                <button
+                                    key={color}
+                                    onClick={() => format('foreColor', color)}
+                                    className="w-4 h-4 rounded-full border border-white/20 hover:scale-125 transition-transform"
+                                    style={{ backgroundColor: color }}
+                                    title={`Text: ${color}`}
+                                />
+                            ))}
+                        </div>
                     </div>
-                    <div className="relative group">
-                        <button className="p-2 hover:bg-white/10 rounded-lg text-amber-400 transition-colors relative" title="Highlight Color Picker">
-                           <Highlighter size={16} />
-                           <input type="color" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onChange={(e) => format('hiliteColor', e.target.value)} />
-                        </button>
+                    <div className="flex items-center gap-1">
+                        <div className="relative group">
+                            <button className="p-2 hover:bg-white/10 rounded-lg text-amber-400 transition-colors relative" title="Custom Highlight">
+                               <Highlighter size={14} />
+                               <input type="color" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onChange={(e) => format('hiliteColor', e.target.value)} />
+                            </button>
+                        </div>
+                        <div className="flex gap-1">
+                            {['#0c4a6e', '#064e3b', '#7f1d1d', '#78350f', '#581c87'].map(color => (
+                                <button
+                                    key={color}
+                                    onClick={() => format('hiliteColor', color)}
+                                    className="w-4 h-4 rounded-full border border-white/20 hover:scale-125 transition-transform"
+                                    style={{ backgroundColor: color }}
+                                    title={`Highlight: ${color}`}
+                                />
+                            ))}
+                        </div>
                     </div>
                 </div>
                 <div className="w-[1px] h-5 bg-white/10 mx-1" />
@@ -351,7 +376,7 @@ const ContentBlock = React.forwardRef(({ html, tagName: Tag = 'div', className, 
                 if (typeof ref === 'function') ref(node);
                 else if (ref) (ref as React.MutableRefObject<HTMLElement | null>).current = node;
             }}
-            className={`outline-none min-h-[1.5em] focus:empty:before:content-[attr(data-placeholder)] empty:before:text-white/20 px-1 transition-all duration-200 ${className} [&>b]:font-black [&>i]:italic [&>u]:underline [&>mark]:bg-amber-500/20 [&>mark]:text-amber-500 [&>mark]:px-1 [&>mark]:rounded-md relative after:content-[attr(data-prediction)] after:text-white/20 after:pointer-events-none after:absolute after:pl-1`}
+            className={`outline-none min-h-[1.5em] focus:empty:before:content-[attr(data-placeholder)] empty:before:text-white/20 px-1 transition-all duration-200 ${className} [&>b]:font-black [&>i]:italic [&>u]:underline [&>mark]:bg-amber-500/20 [&>mark]:text-amber-500 [&>mark]:px-2 [&>mark]:py-0.5 [&>mark]:mx-0.5 [&>mark]:rounded-[2px_10px_4px_8px/8px_3px_10px_2px] [&>mark]:[box-decoration-break:clone] [&_*[style*="background-color"]]:px-2 [&_*[style*="background-color"]]:py-0.5 [&_*[style*="background-color"]]:mx-0.5 [&_*[style*="background-color"]]:rounded-[2px_12px_3px_15px/15px_3px_12px_2px] [&_*[style*="background-color"]]:[box-decoration-break:clone] [&_*[style*="background-color"]]:[-webkit-box-decoration-break:clone] relative after:content-[attr(data-prediction)] after:text-white/20 after:pointer-events-none after:absolute after:pl-1`}
             contentEditable
             suppressContentEditableWarning
             onInput={handleInput}
