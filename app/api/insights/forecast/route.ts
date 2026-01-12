@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { fetchMultiTimeframeData, analyzeMarketMultiTimeframe, isAnalysisStillValid } from '@/lib/analysis_engine';
+import { fetchMultiTimeframeData, analyzeMarketMultiTimeframe, isAnalysisStillValid, fetchCurrentPrice } from '@/lib/analysis_engine';
 import dbConnect from '@/lib/db';
 import Forecast from '@/lib/models/Forecast';
 
@@ -56,22 +56,31 @@ export async function POST(req: Request) {
       // @ts-ignore
       const dbForecast = await Forecast.findOne({ symbol: symbol.toUpperCase() });
       
+      // Early return if DB data is valid and not forced
+      if (!force && dbForecast) {
+          // If it's very fresh (< 1 hour), just return it without even checking price if no previousAnalysis was sent
+          const age = Date.now() - new Date(dbForecast.updatedAt).getTime();
+          if (age < 3600000 && !previousAnalysis) {
+              return NextResponse.json(dbForecast.analysis);
+          }
+
+          // Otherwise, fetch just the current price for validation (surgical check)
+          const currentPrice = await fetchCurrentPrice(symbol);
+          
+          if (currentPrice > 0) {
+              const validity = isAnalysisStillValid(dbForecast.analysis, currentPrice);
+              if (validity.valid) {
+                  return NextResponse.json(dbForecast.analysis);
+              }
+          }
+      }
+
+      // 2. Perform Full Data Fetch for New Analysis
       const tfData = await fetchMultiTimeframeData(symbol);
       const hasData = Object.values(tfData).some(candles => candles.length > 0);
       if (!hasData) return new NextResponse('API Rate Limit Exhausted', { status: 503 });
       
-      const currentPrice = tfData['1M'].slice(-1)[0]?.close || tfData['15M'].slice(-1)[0]?.close || 0;
-
-      // 2. Performance Validation Check (Check DB first, then previousAnalysis)
-      if (!force) {
-          const analysisToCheck = dbForecast ? dbForecast.analysis : previousAnalysis;
-          if (analysisToCheck) {
-              const validity = isAnalysisStillValid(analysisToCheck, currentPrice);
-              if (validity.valid) {
-                  return NextResponse.json(analysisToCheck);
-              }
-          }
-      }
+      const priceAtFetch = tfData['1M'].slice(-1)[0]?.close || tfData['15M'].slice(-1)[0]?.close || 0;
 
       // 3. Perform Multi-Timeframe SMC Analysis
       const analysis = analyzeMarketMultiTimeframe(symbol.toUpperCase(), tfData);

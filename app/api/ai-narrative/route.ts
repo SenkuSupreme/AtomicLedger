@@ -6,18 +6,35 @@ import Forecast from '@/lib/models/Forecast';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
-const openai = new OpenAI({
+// Multi-Key Distribution Protocol (Expanded to 8 Institutional Channels)
+const API_KEYS = [
+  process.env.OPENROUTER_API_KEY,
+  process.env.OPENROUTER_API_KEY_2,
+  process.env.OPENROUTER_API_KEY_3,
+  process.env.OPENROUTER_API_KEY_4,
+  process.env.OPENROUTER_API_KEY_5,
+  process.env.OPENROUTER_API_KEY_6,
+  process.env.OPENROUTER_API_KEY_7,
+  process.env.OPENROUTER_API_KEY_8
+].filter(Boolean) as string[];
+
+const getNeuralClient = (apiKey: string) => new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.OPENROUTER_API_KEY || 'sk-or-v1-placeholder',
+  apiKey: apiKey,
   defaultHeaders: {
     "HTTP-Referer": "https://journalingapp.vercel.app",
     "X-Title": "Forex Journaling App - Neural Narrative",
   },
 });
 
-// Free model for narrative generation
-const NARRATIVE_MODEL = "meta-llama/llama-3.3-70b-instruct:free";
-const FALLBACK_MODEL = "deepseek/deepseek-chat:free";
+// Free tier models for narrative generation with multi-layered redundancy
+const MODELS = [
+  "google/gemini-2.0-flash-exp:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "mistralai/mistral-7b-instruct:free",
+  "qwen/qwen-2-7b-instruct:free",
+  "meta-llama/llama-3.1-8b-instruct:free"
+];
 
 interface MarketContext {
   symbol: string;
@@ -112,36 +129,51 @@ Generate the forensic structured deep-dive protocol now:
 `;
 
     let narrative = '';
+    let successModel = '';
     
-    try {
-      const completion = await openai.chat.completions.create({
-        model: NARRATIVE_MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        temperature: 0.75,
-        max_tokens: 1000,
-      });
-      narrative = completion.choices[0].message.content || '';
-    } catch (primaryError) {
-      console.warn(`Primary narrative model failed, switching to fallback...`, primaryError);
-      
-      try {
-        const fallbackCompletion = await openai.chat.completions.create({
-          model: FALLBACK_MODEL,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt }
-          ],
-          temperature: 0.75,
-          max_tokens: 1000,
-        });
-        narrative = fallbackCompletion.choices[0].message.content || '';
-      } catch (fallbackError) {
-        console.error("All narrative models failed", fallbackError);
-        narrative = `### FORENSIC REPORT UNAVAILABLE\n\nThe neural link to the institutional streams has been interrupted. **Manual recalibration required.**\n\n**Preliminary Data:** ${context.methodology} ${context.bias} setup at ${context.currentPrice}. Entry: ${context.entryPrice}, SL: ${context.stopLoss}, TP1: ${context.tp1}.`;
-      }
+    // Hybrid Multi-Key / Multi-Model Fallback Matrix
+    const keysToTry = API_KEYS.length > 0 ? API_KEYS : [process.env.OPENROUTER_API_KEY || 'sk-or-v1-placeholder'];
+
+    outerLoop: for (const key of keysToTry) {
+        const client = getNeuralClient(key);
+        
+        for (const model of MODELS) {
+            try {
+                const completion = await client.chat.completions.create({
+                    model: model,
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: userPrompt }
+                    ],
+                    temperature: 0.75,
+                    max_tokens: 1000,
+                });
+                
+                narrative = completion.choices[0].message.content || '';
+                if (narrative.length > 50) {
+                    successModel = model;
+                    break outerLoop; // Found a working key and model combo
+                }
+            } catch (err: any) {
+                const status = err?.status || err?.code;
+                console.warn(`Key ${key.slice(0, 10)}... failed with model ${model}. Status: ${status}`);
+                
+                // If the key itself is exhausted (429), switch to the next key immediately
+                if (status === 429) {
+                    console.warn(`Institutional Key Exhausted (429). Rotating to secondary key...`);
+                    continue outerLoop; 
+                }
+                
+                // If it's a model-specific error (404, etc.), try the next model with the same key
+                continue;
+            }
+        }
+    }
+
+    // Final Fallback if all keys and models fail
+    if (!narrative) {
+      narrative = `### FORENSIC REPORT UNAVAILABLE\n\nThe neural link to the institutional streams has been interrupted. **Manual recalibration required.**\n\n**Preliminary Data:** ${context.methodology} ${context.bias} setup at ${context.currentPrice}. Entry: ${context.entryPrice}, SL: ${context.stopLoss}, TP1: ${context.tp1}.`;
+      successModel = 'FINAL_FALLBACK';
     }
 
     // --- SAVE TO DATABASE ---
@@ -167,7 +199,7 @@ Generate the forensic structured deep-dive protocol now:
 
     return NextResponse.json({ 
       narrative: narrative.trim(),
-      model: NARRATIVE_MODEL,
+      model: successModel,
       generated: new Date().toISOString()
     });
 

@@ -167,7 +167,19 @@ export default function SMCMasterclassPage() {
         const fetchInitial = async () => {
             setLoading(true);
             try {
-                const previousAnalysis = null; // Don't pass cached here to force fresh fetch on first load if needed
+                // 1. Try GET first to load from DB without triggering analysis
+                const getRes = await fetch(`/api/insights/forecast?symbol=${symbol}`);
+                if (getRes.ok) {
+                    const dbResult = await getRes.json();
+                    if (dbResult && dbResult.smc_advanced) {
+                        setData(dbResult);
+                        setLoading(false);
+                        return; // Found in DB, stop here
+                    }
+                }
+
+                // 2. If not in DB, trigger fresh analysis via POST
+                const previousAnalysis = null;
                 const res = await fetch(`/api/insights/forecast`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -177,12 +189,14 @@ export default function SMCMasterclassPage() {
                     const result = await res.json();
                     if (result && result.smc_advanced) {
                         setData(result);
-                        setLoading(false);
                     }
                 }
             } catch (e) {
-                console.error("Fetch error:", e);
+                console.error("Initialization error:", e);
+                toast.error("Forensic link interrupted. Attempting manual sync...");
                 triggerNewAnalysis();
+            } finally {
+                setLoading(false);
             }
         };
 

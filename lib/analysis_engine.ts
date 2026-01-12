@@ -169,6 +169,33 @@ export async function fetchMarketData(symbol: string, interval: string = '60min'
     return await fetchWithRotation(symbol, interval);
 }
 
+export async function fetchCurrentPrice(symbol: string): Promise<number> {
+    if (TWELVE_DATA_KEYS.length === 0) return 0;
+    
+    // Try to get 1min price as it's the most current
+    for (let i = 0; i < TWELVE_DATA_KEYS.length; i++) {
+        const key = TWELVE_DATA_KEYS[currentKeyIndex];
+        let cleanSym = symbol.toUpperCase().replace('-', '');
+        if (cleanSym.length === 6 && !cleanSym.includes('/')) {
+            cleanSym = `${cleanSym.substring(0, 3)}/${cleanSym.substring(3, 6)}`;
+        }
+
+        try {
+            const url = `https://api.twelvedata.com/time_series?symbol=${cleanSym}&interval=1min&apikey=${key}&outputsize=1`;
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (data.status === 'ok' && data.values && data.values[0]) {
+                return parseFloat(data.values[0].close);
+            }
+            currentKeyIndex = (currentKeyIndex + 1) % TWELVE_DATA_KEYS.length;
+        } catch (e) {
+            currentKeyIndex = (currentKeyIndex + 1) % TWELVE_DATA_KEYS.length;
+        }
+    }
+    return 0;
+}
+
 export async function fetchMultiTimeframeData(symbol: string): Promise<Record<Timeframe, Candle[]>> {
     const results: Record<Timeframe, Candle[]> = { '4H': [], '15M': [], '5M': [], '1M': [] };
     const tfs: { tf: Timeframe; int: string }[] = [
