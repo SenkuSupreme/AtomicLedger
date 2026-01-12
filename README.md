@@ -1,9 +1,37 @@
 # 🌌 ApexLedger
 
-> **The Institutional Trading OS.**  
-> *Where Intelligence Meets Execution.*
+> **THE ELITE COMMAND BOARD FOR CLINICAL EXECUTION.**  
+> *Logic Over Luck. Master the Data. Solve the Logic.*
 
-ApexLedger is a high-performance, AI-augmented trading journal and backtesting ecosystem designed for professional speculators across **Forex, Crypto, and Equities**. 
+ApexLedger is a high-fidelity, institutional-grade trading journal and clinical backtesting ecosystem. Designed for professional speculators who treat trading as a systematic business, it transforms raw data into an objective strategic edge.
+
+---
+
+### 🏛️ The Institutional Architecture (Sectors)
+
+#### **Sector 01: Full Data Control (Dashboard)**
+A professional telemetry board for real-time portfolio monitoring.
+- **Live Execution Tape**: Track every entry/exit with clinical precision.
+- **Dimensional Analytics**: Monitor Win Rates, Sharpe Ratios, Max Drawdown, and RR Averages.
+- **Equity Growth Node**: High-fidelity visualization of your capital velocity.
+
+#### **Sector 02: AI Power Analysis (The Neural Core)**
+Leverage advanced AI to identify patterns that the human eye misses.
+- **Neuro Insights**: AI-driven auditing of your behavioral mistakes and psychological bias.
+- **Clinical Forecasts**: Smart projections based on historical execution data.
+- **Neural Checklists**: Automated, strategy-specific discipline protocols.
+
+#### **Sector 03: Smart Journaling (The Forensic Ledger)**
+Capture every fragment of your process in a high-fidelity environment.
+- **Forensic Trade Cards**: Deep-dive into every execution with rich attachments and evidence.
+- **Intelligence Notebook**: A sophisticated rich-text system for psychological dossiers.
+- **Audit Calendar**: Visual session tracking across NYC, London, and Tokyo windows.
+
+#### **Sector 04: Strategy Builder (Logic Foundry)**
+A rule-based environment designed to eliminate emotional interference.
+- **Institutional Blueprints**: Block-based strategy editor for systematic execution logic.
+- **Visual Mind-Mapping**: Interactive 3D visualization of your strategic architecture.
+- **Blueprint-to-Protocol**: Instantly convert strategy theory into executable checklists.
 
 ---
 
@@ -12,84 +40,51 @@ ApexLedger is a high-performance, AI-augmented trading journal and backtesting e
 This application is a conceptual project built for educational exploration. It is not financial advice, nor is it intended for professional financial management without significant auditing.
 
 **Built with Vibe Coding™**  
-This entire platform was forged through the art of "Vibe Coding"—leveraging advanced AI agents to translate high-level creative vision and architectural "vibes" into production-grade code. It is a testament to the future of software development where intent and aesthetics drive the build.
+Forged through the art of "Vibe Coding"—leveraging advanced AI agents to translate high-level creative vision and architectural "vibes" into production-grade code.
 
 ---
 
-## 🏛️ Key Architecture
-
-### 🧠 The Neural Engine
-Powered by OpenRouter/LLM integration, ApexLedger doesn't just log trades—it understands them.
-- **Automated Tagging**: Real-time pattern recognition and session-based tagging.
-- **Sentiment Synthesis**: AI analysis of your trade notes to identify psychological bias.
-- **Neural Checklists**: Dynamically generated, strategy-specific checklists to ensure discipline.
-- **Strategy Scoring**: Objective AI evaluation of trades based on your predefined blueprints.
-
-### 🗺️ The Neural Map (3D)
-Visualize your trading edge in three dimensions. Using `Three.js` and `react-force-graph-3d`, your strategies are rendered as an interactive neural network, allowing you to explore the connections between variables, triggers, and execution logic.
-
-### 📝 Institutional Core Blueprints
-A sophisticated, block-based strategy editor inspired by Notion.
-- **Institutional Canvas**: Design complex strategies with rich text, images, and logic blocks.
-- **Blueprint-to-Checklist**: One-click conversion of strategy logic into executable neural checklists.
-- **Synthesis Engine**: Bridge the gap between theory and execution.
-
-### 📊 Performance Analytics
-- **Professional Metrics**: Profit Factor, R-Multiple distribution, Win/Loss ratios, and Max Drawdown.
-- **Equity Curve**: Dynamic visualization of your capital growth over time.
-- **Calendar Heatmaps**: Identify your most (and least) profitable sessions and days.
-
-### 🧪 Backtesting 2.0
-- **Simulation Mode**: Replay past price action and execute trades in a controlled environment.
-- **Direct Journaling**: Seamlessly import backtested sessions into your primary journal for comparison.
-- **Multi-Asset Support**: Built-in adapters for Forex, Crypto, and major indices.
+### 🎨 The "Institutional Void" Aesthetic
+ApexLedger prioritizes a clinical, high-performance environment:
+- **Pure Black Interface**: Minimized eye strain for long sessions.
+- **Microscopic Grid Telemetry**: A data-dense, professional "Command Center" feel.
+- **Kinetic Physics**: Advanced GSAP and Framer Motion interactions provide Tangible UI response.
+- **Glassmorphic Depth**: Multi-layered interfaces optimized for cognitive focus.
 
 ---
 
-## 🛠️ Technology Stack
-
+### 🛠️ Technology Stack
 - **Framework**: [Next.js 15+](https://nextjs.org/) (App Router, Server Components)
-- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/) + [Framer Motion](https://www.framer.com/motion/)
+- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/)
+- **Interactions**: [GSAP](https://greensock.com/gsap/) & [Framer Motion](https://www.framer.com/motion/)
 - **Database**: [MongoDB](https://www.mongodb.com/) with [Mongoose](https://mongoosejs.com/)
-- **AI/LLM**: [OpenRouter](https://openrouter.ai/) / [OpenAI](https://openai.com/)
-- **Visuals**: [Three.js](https://threejs.org/) & [React Force Graph 3D](https://github.com/vasturiano/react-force-graph-3d)
-- **Auth**: [NextAuth.js](https://next-auth.js.org/)
+- **AI Engine**: [OpenRouter](https://openrouter.ai/) / [LLM Synthesis]
+- **Visuals**: [Three.js](https://threejs.org/) & [React Force Graph 3D]
+- **Icons**: [Lucide React](https://lucide.dev/)
 
 ---
 
-## 🚀 Quick Start
+### 🚀 Quick Start
 
-### 1. Requirements
-- Node.js 20+
-- MongoDB instance (Local or Atlas)
-- OpenRouter/OpenAI API Key
+1. **Clone & Install**
+   ```bash
+   git clone git@github.com:SenkuSupreme/ApexLedger.git
+   npm install
+   ```
 
-### 2. Installation
-```bash
-git clone https://github.com/yourusername/apexledger.git
-cd apexledger
-npm install
-```
+2. **Environment Configuration**
+   Create a `.env.local` file:
+   ```env
+   MONGODB_URI=your_mongodb_uri
+   NEXTAUTH_SECRET=your_secret
+   OPENROUTER_API_KEY=your_key
+   ```
 
-### 3. Environment Setup
-Create a `.env.local` file in the root:
-```env
-MONGODB_URI=your_mongodb_connection_string
-NEXTAUTH_SECRET=your_nextauth_secret
-OPENROUTER_API_KEY=your_key
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
-
-### 4. Launch
-```bash
-npm run dev
-```
-Visit `http://localhost:3000` to enter the terminal.
-
----
-
-## 🎨 Design Philosophy
-ApexLedger prioritizes a **Minimal/Institutional Aesthetic**. We avoid cluttered interfaces in favor of high-contrast, typography-driven designs with subtle micro-animations and a deep "Midnight Terminal" theme.
+3. **Deploy Node**
+   ```bash
+   npm run dev
+   ```
+   *Terminal active at `localhost:3000`*
 
 ---
 
@@ -97,4 +92,4 @@ ApexLedger prioritizes a **Minimal/Institutional Aesthetic**. We avoid cluttered
 MIT © ApexLedger
 
 ---
-*Stay disciplined. Stay objective.*
+*Stay disciplined. Solve the logic.*
