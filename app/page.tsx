@@ -51,7 +51,10 @@ import {
   TrendingDown,
   History,
   Compass,
-  BarChart3
+  BarChart3,
+  Monitor,
+  Smartphone,
+  X
 } from "lucide-react";
 import { motion, useScroll, useSpring, useTransform, AnimatePresence } from "framer-motion";
 import gsap from "gsap";
@@ -163,7 +166,7 @@ const FeatureCard = ({
       </div>
 
       {/* Glass Finishing Shimmer */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-all duration-1000 pointer-events-none" />
+      <div className="absolute inset-0 bg-linear-to-tr from-transparent via-white/3 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-1000 pointer-events-none" />
     </div>
   );
 };
@@ -176,6 +179,20 @@ export default function ReimaginedLanding() {
 
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
+  const [showMobilePrompt, setShowMobilePrompt] = useState(false);
+
+  useEffect(() => {
+    const isMobile = window.innerWidth < 1024; // Tablet/Mobile threshold
+    const hasPrompted = sessionStorage.getItem("mobile-prompt-dismissed");
+    if (isMobile && !hasPrompted) {
+      setShowMobilePrompt(true);
+    }
+  }, []);
+
+  const dismissPrompt = () => {
+    setShowMobilePrompt(false);
+    sessionStorage.setItem("mobile-prompt-dismissed", "true");
+  };
 
   useGSAP(() => {
     // Reveal Animations
@@ -211,17 +228,83 @@ export default function ReimaginedLanding() {
   return (
     <div ref={containerRef} className="min-h-screen bg-[#050505] text-white selection:bg-indigo-500/40 font-sans antialiased overflow-x-hidden">
       
+      {/* --- MOBILE WARNING OVERLAY --- */}
+      <AnimatePresence>
+        {showMobilePrompt && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-1000 flex items-center justify-center p-6 bg-black/90 backdrop-blur-xl"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="max-w-md w-full border border-white/10 bg-[#080808] p-10 rounded-[2.5rem] relative overflow-hidden space-y-8"
+            >
+              <div className="absolute top-0 right-0 p-6">
+                <button onClick={dismissPrompt} className="text-white/20 hover:text-white transition-colors">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="flex justify-center gap-6 py-4">
+                <div className="relative">
+                  <Monitor size={64} className="text-indigo-500 opacity-20" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <CheckCircle2 size={32} className="text-indigo-400" />
+                  </div>
+                </div>
+                <div className="flex items-center text-white/10">
+                   <div className="h-px w-8 bg-current" />
+                   <div className="px-2 font-black text-[10px] uppercase tracking-widest">VS</div>
+                   <div className="h-px w-8 bg-current" />
+                </div>
+                <div className="relative">
+                  <Smartphone size={64} className="text-white/20" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <X size={32} className="text-rose-500/40" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-center space-y-4">
+                <h3 className="text-2xl font-black uppercase italic tracking-tighter text-white">Full Experience Required</h3>
+                <p className="text-sm font-bold uppercase tracking-widest leading-relaxed text-white/30">
+                  ApexLedger is a high-fidelity institutional terminal. For peak performance and surgical precision, we recommend deploying on a <span className="text-white">Desktop Device</span>.
+                </p>
+              </div>
+
+              <div className="pt-4 space-y-4">
+                <button 
+                  onClick={dismissPrompt}
+                  className="w-full h-14 bg-white text-black font-black text-[10px] uppercase tracking-[0.3em] hover:bg-indigo-600 hover:text-white transition-all transform active:scale-95"
+                >
+                  Enter Lite Mode Anyway
+                </button>
+                <div className="text-center">
+                   <span className="text-[9px] font-black text-white/10 uppercase tracking-widest">Optimized for Ultra-Wide & 4K Displays</span>
+                </div>
+              </div>
+
+              {/* Decorative Glow */}
+              <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none" />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
       {/* --- VOID BACKGROUND SYSTEM --- */}
       <div className="fixed inset-0 pointer-events-none -z-10 bg-black">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(99,102,241,0.1)_0%,transparent_70%)]" />
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.04] mix-blend-overlay" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:60px_60px]" />
+        <div className="absolute inset-0 bg-size-[60px_60px] bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)]" />
       </div>
 
-      <motion.div className="fixed top-0 left-0 right-0 h-1.5 bg-indigo-500 z-[110] origin-left shadow-[0_0_20px_rgba(99,102,241,0.6)]" style={{ scaleX }} />
+      <motion.div className="fixed top-0 left-0 right-0 h-1.5 bg-indigo-500 z-110 origin-left shadow-[0_0_20px_rgba(99,102,241,0.6)]" style={{ scaleX }} />
 
       {/* Navigation */}
-      <nav className={`fixed w-full z-[100] transition-all duration-1000 ${scrolled ? "bg-black/95 backdrop-blur-3xl py-4 border-b border-white/5 shadow-2xl" : "bg-transparent py-10"}`}>
+      <nav className={`fixed w-full z-100 transition-all duration-1000 ${scrolled ? "bg-black/95 backdrop-blur-3xl py-4 border-b border-white/5 shadow-2xl" : "bg-transparent py-10"}`}>
         <div className="max-w-[1500px] mx-auto px-10 flex items-center justify-between">
           <div className="flex items-center gap-5 cursor-pointer group" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
             <div className="w-11 h-11 border-2 border-indigo-500/40 flex items-center justify-center rounded-[0.75rem] group-hover:border-indigo-400 group-hover:bg-indigo-500/10 transition-all duration-500">
@@ -257,7 +340,7 @@ export default function ReimaginedLanding() {
             
             <h1 className="flex flex-col items-center select-none overflow-visible">
               <span className="text-[clamp(3.5rem,12vw,10rem)] font-black uppercase italic leading-[0.75] tracking-tighter text-white drop-shadow-[0_0_50px_rgba(255,255,255,0.1)]">PEAK</span>
-              <span className="text-[clamp(3.5rem,12vw,10rem)] font-black uppercase italic leading-[0.75] tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-transparent opacity-20">PERFORMANCE.</span>
+              <span className="text-[clamp(3.5rem,12vw,10rem)] font-black uppercase italic leading-[0.75] tracking-tighter text-transparent bg-clip-text bg-linear-to-b from-white to-transparent opacity-20">PERFORMANCE.</span>
             </h1>
             
             <p className="text-2xl md:text-3xl text-white/30 max-w-4xl mx-auto font-medium leading-[1.1] italic uppercase tracking-tighter py-10">
@@ -336,7 +419,7 @@ export default function ReimaginedLanding() {
                                      { label: 'Max DD', val: '2.1%' },
                                      { label: 'Sharpe', val: '3.2' }
                                    ].map((s, i) => (
-                                     <div key={i} className="px-6 py-4 border border-white/5 bg-white/[0.02] rounded-2xl flex flex-col gap-1 items-start min-w-[120px] group/s hover:bg-white/5 transition-colors">
+                                     <div key={i} className="px-6 py-4 border border-white/5 bg-white/2 rounded-2xl flex flex-col gap-1 items-start min-w-[120px] group/s hover:bg-white/5 transition-colors">
                                         <span className="text-[9px] font-black text-white/20 uppercase tracking-widest group-hover/s:text-indigo-400 transition-colors">{s.label}</span>
                                         <span className="text-lg font-black italic text-white">{s.val}</span>
                                      </div>
@@ -351,10 +434,10 @@ export default function ReimaginedLanding() {
                                       <span className="text-[9px] font-black uppercase tracking-widest text-white/20">Equity Curve</span>
                                       <TrendingUp size={14} className="text-indigo-500" />
                                    </div>
-                                   <div className="absolute inset-x-0 bottom-0 h-32 opacity-10 blur-sm bg-gradient-to-t from-indigo-500 to-transparent translate-y-8" />
+                                   <div className="absolute inset-x-0 bottom-0 h-32 opacity-10 blur-sm bg-linear-to-t from-indigo-500 to-transparent translate-y-8" />
                                    <div className="h-full flex items-end gap-1 relative z-10">
                                       {Array.from({length: 48}).map((_, i) => (
-                                         <div key={i} className="flex-1 bg-indigo-500/20 group-hover/c:bg-indigo-500/40 transition-all duration-700 hover:!bg-indigo-400 hover:scale-y-110" style={{ height: `${20 + Math.random() * 80}%` }} />
+                                         <div key={i} className="flex-1 bg-indigo-500/20 group-hover/c:bg-indigo-500/40 transition-all duration-700 hover:bg-indigo-400! hover:scale-y-110" style={{ height: `${20 + Math.random() * 80}%` }} />
                                       ))}
                                    </div>
                                 </div>
@@ -371,7 +454,7 @@ export default function ReimaginedLanding() {
                                         { pair: 'EURJPY', type: 'BUY', result: '+$2,842.10', color: 'emerald' },
                                         { pair: 'BTCUSD', type: 'SELL', result: '+$6,402.00', color: 'emerald' }
                                       ].map((t, i) => (
-                                        <div key={i} className="flex justify-between items-center p-3 border border-white/5 bg-white/[0.02] rounded-xl hover:bg-white/5 transition-colors">
+                                         <div key={i} className="flex justify-between items-center p-3 border border-white/5 bg-white/2 rounded-xl hover:bg-white/5 transition-colors">
                                            <div className="flex items-center gap-3">
                                               <div className={`w-1.5 h-1.5 rounded-full ${t.result.includes('+') ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]'}`} />
                                               <span className="text-[11px] font-black text-white tracking-widest">{t.pair}</span>
@@ -443,7 +526,7 @@ export default function ReimaginedLanding() {
                       { icon: Notebook, label: "Intelligence Notebook" }
                     ].map((item, i) => (
                       <div key={i} className="flex items-center gap-4 group">
-                         <div className="w-12 h-12 border border-white/5 rounded-xl flex items-center justify-center bg-white/[0.02] group-hover:border-indigo-500/50 group-hover:text-indigo-400 transition-all duration-500">
+                         <div className="w-12 h-12 border border-white/5 rounded-xl flex items-center justify-center bg-white/2 group-hover:border-indigo-500/50 group-hover:text-indigo-400 transition-all duration-500">
                             <item.icon size={20} />
                          </div>
                          <span className="text-[11px] font-black uppercase tracking-widest text-white/40 group-hover:text-white transition-colors">{item.label}</span>
@@ -531,7 +614,7 @@ export default function ReimaginedLanding() {
         <section className="py-96 px-10 text-center bg-black relative overflow-hidden reveal-up">
            <div className="max-w-6xl mx-auto space-y-32">
               <h2 className="text-7xl md:text-[10vw] font-black uppercase italic leading-[0.7] tracking-tighter text-white select-none">
-                 Ready to <br /> <span className="text-transparent bg-clip-text bg-gradient-to-b from-white/20 to-transparent">Start.</span>
+                 Ready to <br /> <span className="text-transparent bg-clip-text bg-linear-to-b from-white/20 to-transparent">Start.</span>
               </h2>
               <div className="flex justify-center">
                  <Link href="/auth/signup" className="bg-indigo-600 text-white px-16 py-6 font-black text-xl uppercase tracking-[0.2em] hover:bg-white hover:text-black transition-all shadow-[0_30px_80px_rgba(79,70,229,0.3)] transform hover:scale-105 active:scale-95">
